@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://imc7185wqb0l"]
+
+[ext_resource type="PackedScene" uid="uid://buqit1bl6qgv5" path="res://scenes/bicudinho.tscn" id="1_kta4m"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fapdk"]
+size = Vector2(640, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gserw"]
+size = Vector2(64, 48)
+
+[node name="teste" type="Node2D" unique_id=532078176]
+
+[node name="Chao" type="StaticBody2D" parent="." unique_id=136308182]
+position = Vector2(320, 344)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Chao" unique_id=2135137791]
+shape = SubResource("RectangleShape2D_fapdk")
+
+[node name="ColorRect" type="ColorRect" parent="Chao" unique_id=281373229]
+offset_left = -320.0
+offset_top = -16.0
+offset_right = 320.0
+offset_bottom = 16.0
+color = Color(0.8038435, 0.42288703, 1.92523e-07, 1)
+
+[node name="Degrau" type="StaticBody2D" parent="." unique_id=172226130]
+position = Vector2(480, 304)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Degrau" unique_id=1826139941]
+shape = SubResource("RectangleShape2D_gserw")
+
+[node name="ColorRect" type="ColorRect" parent="Degrau" unique_id=2107005335]
+offset_left = -32.0
+offset_top = -24.0
+offset_right = 32.0
+offset_bottom = 24.0
+color = Color(0.8038435, 0.42288703, 1.92523e-07, 1)
+
+[node name="Bicudinho" parent="." unique_id=1522242112 instance=ExtResource("1_kta4m")]
+position = Vector2(80, 328)
