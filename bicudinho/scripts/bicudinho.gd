@@ -29,7 +29,7 @@ var hazard_check: Callable = Callable()
 
 var _air_time := 0.0      # tempo desde que saiu do chão (anima o pulo)
 var _glide_left := 0.0    # tempo de planar que ainda resta neste pulo
-var _state_time := 0.0    # tempo dentro do estado atual (prepare, dash, stun)
+var _state_time := 0.0    # tempo dentro do estado atual (prepare, dash, stun, morte)
 var _dash_dir := Vector2.RIGHT
 var _dash_travelled := 0.0
 
@@ -56,6 +56,7 @@ func box_rect() -> Rect2:
 
 func _physics_process(delta: float) -> void:
 	if dead:
+		_state_time += delta  # só para animar a morte
 		return
 	anim_time += delta
 	match state:
@@ -292,12 +293,13 @@ func enforce_inside(interior: Rect2) -> void:
 		die("crush")
 
 
+## Congela e começa a animação de morte. Quem escuta o sinal `died` reinicia a fase.
 func die(cause: String) -> void:
 	if dead:
 		return
 	dead = true
 	velocity = Vector2.ZERO
-	modulate = Color(1.0, 0.45, 0.45)
+	_state_time = 0.0
 	died.emit(cause)
 
 
@@ -310,7 +312,7 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if not _draw_art():
 		_draw_placeholder()
-	if state == State.STUN:
+	if state == State.STUN and not dead:
 		_draw_stars()
 
 
@@ -336,6 +338,8 @@ func _get_frames(art_name: String) -> Array:
 
 
 func _art_name() -> String:
+	if dead:
+		return "bicudinho_dead"
 	match state:
 		State.PREPARE:
 			return "bicudinho_prepare"
@@ -387,14 +391,16 @@ func _loop_fps(art_name: String) -> float:
 	return Tuning.GLIDE_FPS  # planar: bater de asas
 
 
-## Andar, parado, queda, planar, preparar e disparar repetem; o pulinho toca uma vez e
-## fica no último quadro. Na disparada o sprite gira para apontar a direção.
-## Devolve false se não há arte nenhuma (aí vai o placeholder).
+## Andar, parado, queda, planar, preparar e disparar repetem; o pulinho e a morte
+## tocam uma vez e ficam no último quadro. Na disparada o sprite gira para apontar
+## a direção. Devolve false se não há arte nenhuma (aí vai o placeholder).
 func _draw_art() -> bool:
 	var art_name := _art_name()
 	var used := art_name
 	var frames := _get_frames(art_name)
 	if frames.is_empty():
+		if dead:
+			return false  # sem arte da morte: o placeholder desenha o bicudinho deitado
 		for alt: String in _fallbacks(art_name):
 			frames = _get_frames(alt)
 			if not frames.is_empty():
@@ -404,7 +410,9 @@ func _draw_art() -> bool:
 		return false
 
 	var idx := 0
-	if art_name == "bicudinho_idle" and used != art_name:
+	if art_name == "bicudinho_dead":
+		idx = mini(int(_state_time * Tuning.DEAD_FPS), frames.size() - 1)
+	elif art_name == "bicudinho_idle" and used != art_name:
 		idx = 0  # parado sem arte própria: primeiro quadro do andar
 	elif used == "bicudinho_jump":
 		if art_name == "bicudinho_jump":
@@ -423,7 +431,7 @@ func _draw_art() -> bool:
 	# na disparada, gira em torno do meio do corpo
 	var pivot := Vector2.ZERO
 	var angle := 0.0
-	if state == State.DASH:
+	if state == State.DASH and not dead:
 		pivot = Vector2(0, -8)
 		angle = atan2(_dash_dir.y, absf(_dash_dir.x)) * facing
 	draw_set_transform(pivot + Vector2(0, Tuning.SPRITE_Y_ADJUST), angle, Vector2(facing, 1))
@@ -433,6 +441,13 @@ func _draw_art() -> bool:
 
 
 func _draw_placeholder() -> void:
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(facing, 1))
+	if dead:
+		# deitado, escurecido
+		draw_rect(Rect2(-7, -5, 14, 5), Color("6b4a2a"))
+		draw_rect(Rect2(-5, -7, 9, 2), Color("ead9a6"))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
 	var body := Color("b5833c")
 	match state:
 		State.PREPARE:

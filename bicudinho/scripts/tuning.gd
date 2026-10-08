@@ -24,7 +24,7 @@ const MAX_FALL_SPEED := 420.0
 const COYOTE_TIME := 0.1
 const JUMP_BUFFER := 0.1
 const BIRD_BOX := Vector2(12, 14)
-const DEATH_RESTART_TIME := 1.0
+const DEATH_RESTART_TIME := 1.0  # a fase reinicia depois disso (a animação cabe nele)
 
 # --- Bicudinho: planar --------------------------------------------------------
 ## Ação segurada para planar enquanto cai. Para usar outra tecla, crie a ação
@@ -59,6 +59,7 @@ const GLIDE_FPS := 10.0          # planar: bater de asas
 const PREPARE_FPS := 20.0        # 3 quadros em ~0,15 s
 const DASH_FPS := 16.0
 const JUMP_FPS := 12.0           # o pulinho toca uma vez e fica no último quadro
+const DEAD_FPS := 6.0            # a morte toca uma vez (4 quadros em ~0,67 s)
 
 # --- Janela do jogo e vidro ---------------------------------------------------
 const GLASS_THICKNESS := 4.0     # espessura visual do vidro
