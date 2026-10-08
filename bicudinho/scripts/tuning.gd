@@ -26,12 +26,39 @@ const JUMP_BUFFER := 0.1
 const BIRD_BOX := Vector2(12, 14)
 const DEATH_RESTART_TIME := 1.0
 
+# --- Bicudinho: planar --------------------------------------------------------
+## Ação segurada para planar enquanto cai. Para usar outra tecla, crie a ação
+## (por exemplo "glide") no Mapa de Entrada e troque o nome aqui.
+const GLIDE_ACTION := &"move_up"
+const GLIDE_FALL_SPEED := 110.0  # velocidade máxima de queda planando (px/s)
+const GLIDE_BRAKE := 1500.0      # quão rápido ele freia ao começar a planar
+const GLIDE_TIME := 0.6          # segundos de planar por pulo (volta ao tocar o chão)
+
+# --- Bicudinho: preparar voo e disparada --------------------------------------
+const PREPARE_MIN_AIR_TIME := 0.12      # tempo no ar antes de poder preparar
+const PREPARE_GROUND_CLEARANCE := 12.0  # perto do chão, o 2º toque não prepara
+const PREPARE_TIME := 0.15              # a pausa em que ele mira
+const PREPARE_GRAVITY_SCALE := 0.05     # fração da gravidade durante a pausa
+const DASH_SPEED := 400.0
+const DASH_DISTANCE := 80.0             # 5 tiles
+const DASH_EXIT_SPEED_SCALE := 0.35     # velocidade que sobra ao fim da disparada
+const STUN_TIME := 0.5                  # atordoado ao bater no vidro
+
+enum GlassRule { BLOCK, STUN, KILL }
+## Regra única do vidro (para a disparada): BLOCK só bloqueia, STUN atordoa, KILL mata.
+const GLASS_RULE := GlassRule.STUN
+
 # --- Bicudinho: arte ----------------------------------------------------------
 ## Soma no Y do sprite. Positivo desce, negativo sobe. Use se ele aparecer
 ## flutuando ou afundado no chão (a base da imagem fica nos pés).
 const SPRITE_Y_ADJUST := 2.0
 const WALK_FPS := 10.0
 const IDLE_FPS := 3.0
+const FALL_FPS := 10.0           # a queda repete enquanto ele cai
+const GLIDE_FPS := 10.0          # planar: bater de asas
+const PREPARE_FPS := 20.0        # 3 quadros em ~0,15 s
+const DASH_FPS := 16.0
+const JUMP_FPS := 12.0           # o pulinho toca uma vez e fica no último quadro
 
 # --- Janela do jogo e vidro ---------------------------------------------------
 const GLASS_THICKNESS := 4.0     # espessura visual do vidro

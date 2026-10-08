@@ -1,6 +1,7 @@
 extends Node2D
-## Cena de teste do passo 2: desktop falso, janela redimensionável com vidro, mapa e bicudinho.
-## Tudo é montado por código, então a cena só precisa deste script no nó raiz.
+## Cena de teste dos passos 2 e 3: desktop falso, janela redimensionável com vidro,
+## mapa e bicudinho. Tudo é montado por código, então a cena só precisa deste
+## script no nó raiz.
 
 const COLS := 40
 const ROWS := 21
@@ -34,6 +35,7 @@ func _ready() -> void:
 	bird.position = Vector2(72, 288)  # pés sobre o chão (linha 18 do mapa)
 	bird.hazard_check = Callable(tiles, "hazard_hit")
 	bird.died.connect(_on_bird_died)
+	bird.glass_hit.connect(win.add_crack)  # a batida no vidro desenha uma rachadura
 	add_child(bird)
 
 	add_child(win)  # por último: a moldura e o vidro desenham por cima de tudo
@@ -51,7 +53,7 @@ func _build_map() -> PackedStringArray:
 		row.fill(".")
 		g.append(row)
 	_paint(g, 0, 18, 39, 19, "#")    # chão
-	_paint(g, 14, 18, 19, 19, "~")   # poço de rio (6 tiles)
+	_paint(g, 12, 18, 20, 19, "~")   # poço de rio (9 tiles: só com a disparada)
 	_paint(g, 26, 15, 29, 17, "#")   # degrau alto (3 tiles)
 	_paint(g, 20, 13, 24, 13, "=")   # plataforma fina
 	_paint(g, 36, 12, 37, 17, "#")   # parede perto da borda direita
@@ -129,4 +131,5 @@ func _draw() -> void:
 	draw_rect(win.rect, SKY_COLOR)  # o céu só existe dentro da janela
 	draw_rect(Rect2(0, Tuning.SCREEN_H - Tuning.TASKBAR_H, Tuning.SCREEN_W, Tuning.TASKBAR_H), TASKBAR_COLOR)
 	draw_string(ThemeDB.fallback_font, Vector2(8, Tuning.SCREEN_H - 6),
-		"Arraste as bordas do vidro   R: reiniciar", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("e8eefc"))
+		"Espaço no ar: preparar | setas: mirar | segurar ↑ caindo: planar | R: reiniciar",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("e8eefc"))
