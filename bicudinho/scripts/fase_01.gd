@@ -7,9 +7,10 @@ extends Node2D
 ##   9-12   degrau de 2 tiles: pular
 ##   13-16  poça de 4 tiles: primeiro risco, pulo simples
 ##   17-19  chão seguro (respiro antes do desafio)
-##   20-29  poça de 10 tiles: só passa com pulo + disparada (planar sozinho fica ~1 tile curto)
-##   30-32  chão de pouso
-##   33-37  barranco de 3 tiles com a saída, colado no vidro da direita.
+##   20-29  poça de 10 tiles, e o outro lado é 2 tiles mais alto. Planar ganha
+##          distância mas perde altura, então só passa com a disparada.
+##   30-32  pouso elevado (2 tiles)
+##   33-37  barranco de mais 3 tiles com a saída, colado no vidro da direita.
 ##          Quem dispara forte rumo à saída bate no vidro, fica atordoado e cai
 ##          no barranco: a lição do vidro acontece sem castigo.
 
@@ -23,7 +24,7 @@ const WINDOW_MIN := Vector2(576, 272)
 const WINDOW_MAX := Vector2(576, 272)
 const BIRD_START := Vector2(72, 288)  # pés sobre o chão (linha 18 do mapa)
 
-const EXIT_CELL := Vector2i(35, 14)   # tile do icon_brejo (em cima do barranco)
+const EXIT_CELL := Vector2i(35, 12)   # tile do icon_brejo (em cima do barranco)
 const EXIT_COLOR := Color("2f7d3a")
 const EXIT_REED := Color("c9a86a")
 const WIN_RESTART_TIME := 1.5
@@ -64,6 +65,7 @@ func _ready() -> void:
 	win.hit_limit.connect(Audio.play.bind("sfx_window_limit"))
 	win.button_pressed.connect(_on_window_button)
 	_on_rect_changed()
+	Audio.resume_music()  # a vitória para a música; ao recomeçar, ela volta
 
 
 ## Mapa de 40x21 tiles. Legenda em tile_world.gd.
@@ -78,7 +80,8 @@ func _build_map() -> PackedStringArray:
 	_paint(g, 9, 16, 12, 17, "#")    # degrau de 2 tiles
 	_paint(g, 13, 18, 16, 19, "~")   # poça pequena (4)
 	_paint(g, 20, 18, 29, 19, "~")   # poça grande (10): precisa da disparada
-	_paint(g, 33, 15, 39, 17, "#")   # barranco final (3 tiles)
+	_paint(g, 30, 16, 32, 17, "#")   # pouso elevado (2 tiles): planar não alcança
+	_paint(g, 33, 13, 39, 17, "#")   # barranco final (mais 3 tiles)
 	var rows := PackedStringArray()
 	for row in g:
 		rows.append("".join(row))
@@ -123,7 +126,8 @@ func _physics_process(delta: float) -> void:
 
 func _win() -> void:
 	_won = true
-	Audio.play("sfx_win_level")
+	Audio.stop_music()
+	Audio.play("sfx_win_level", 0.0, Tuning.WIN_VOLUME_DB)
 	bird.set_physics_process(false)
 	await get_tree().create_timer(WIN_RESTART_TIME).timeout
 	get_tree().reload_current_scene()  # sem fase 2 ainda: recomeça

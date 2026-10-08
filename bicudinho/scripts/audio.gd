@@ -6,6 +6,7 @@ extends Node
 const SOUNDS := {
 	"sfx_jump": "res://sfx/sfx_jump.ogg",
 	"sfx_step": "res://sfx/sfx_step.ogg",
+	"sfx_dash": "res://sfx/sfx_dash.ogg",
 	"sfx_ui_click": "res://sfx/sfx_ui_click.mp3",
 	"sfx_ui_hover": "res://sfx/sfx_ui_hover.mp3",
 	"sfx_window_limit": "res://sfx/sfx_window_limit.mp3",
@@ -49,6 +50,17 @@ func play(sound: String, pitch_jitter := 0.0, volume_db := 0.0) -> void:
 	p.volume_db = volume_db
 	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
 	p.play()
+
+
+## Para a música (por exemplo, na vitória). `stop()` não dispara o loop.
+func stop_music() -> void:
+	_music.stop()
+
+
+## Volta a música do começo, se ela já tinha começado (depois do primeiro clique).
+func resume_music() -> void:
+	if _music_started and _music.stream != null and not _music.playing:
+		_music.play()
 
 
 func toggle_mute() -> void:

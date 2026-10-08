@@ -13,7 +13,7 @@ Material de terceiros usado no jogo, com autor e licença.
 
 | Arquivo no projeto | Arquivo original | Autor | Licença |
 | --- | --- | --- | --- |
-| `sfx/sfx_jump.ogg`, `sfx/sfx_step.ogg` | feitos pelo time | equipe bicudinho | próprios |
+| `sfx/sfx_jump.ogg`, `sfx/sfx_step.ogg`, `sfx/sfx_dash.ogg` | feitos pelo time | equipe bicudinho | próprios |
 | `sfx/sfx_ui_click.mp3` | matthewvakaliuk73627-mouse-click-290204.mp3 (Pixabay) | matthewvakaliuk73627 | Pixabay Content License |
 | `sfx/sfx_ui_hover.mp3` | 47313572-ui-pop-sound-316482.mp3 (Pixabay) | 47313572 | Pixabay Content License |
 | `sfx/sfx_window_limit.mp3` | soundshelfstudio-ui-error-pop-515668.mp3 (Pixabay) | soundshelfstudio | Pixabay Content License |

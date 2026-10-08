@@ -43,6 +43,9 @@ const DASH_SPEED := 400.0
 const DASH_DISTANCE := 80.0             # 5 tiles
 const DASH_EXIT_SPEED_SCALE := 0.35     # velocidade que sobra ao fim da disparada
 const STUN_TIME := 0.5                  # atordoado ao bater no vidro
+## Bater de lado na terra a até esta altura (px) abaixo do topo sobe na quina
+## em vez de escorregar. Vale para a disparada e para o pulo. Nunca no vidro.
+const LEDGE_ASSIST := 12.0
 
 enum GlassRule { BLOCK, STUN, KILL }
 ## Regra única do vidro (para a disparada): BLOCK só bloqueia, STUN atordoa, KILL mata.
@@ -64,6 +67,8 @@ const DEAD_FPS := 6.0            # a morte toca uma vez (4 quadros em ~0,67 s)
 # --- Sons ---------------------------------------------------------------------
 ## Volume dos passos em dB (0 = original, -6 = metade, mais negativo = mais baixo).
 const STEP_VOLUME_DB := -14.0
+## Volume do som de vitória da fase em dB.
+const WIN_VOLUME_DB := -12.0
 ## Quantos passos tocam por segundo enquanto ele anda.
 const STEPS_PER_SECOND := 4.0
 
