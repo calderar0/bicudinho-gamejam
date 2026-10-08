@@ -34,9 +34,9 @@ const WALK_FPS := 10.0
 const IDLE_FPS := 3.0
 
 # --- Janela do jogo e vidro ---------------------------------------------------
-const GLASS_THICKNESS := 4.0     # espessura visual do vidro
+const GLASS_THICKNESS := 3.0     # espessura visual do vidro (moldura preta + cinza)
 const GLASS_COLLIDER := 16.0     # espessura da colisão (maior, para não ser atravessada)
-const TITLEBAR_H := 12.0
+const TITLEBAR_H := 24.0         # painel azul: borda de 4 + botão de 16 + borda de 4
 const RESIZE_SPEED := 360.0      # px/s: limite de velocidade ao redimensionar
 const RESIZE_GRAB := 6.0         # largura da faixa de arrasto na borda
 const RESIZE_CORNER := 12.0      # tamanho da zona de canto

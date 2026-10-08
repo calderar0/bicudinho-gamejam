@@ -2,15 +2,40 @@ class_name GameWindow
 extends Node2D
 ## A janela falsa do jogo.
 ## `rect` é a área interna (o que existe). As bordas são vidro sólido: 4 corpos
-## estáticos que seguem a janela. A barra de título fica acima do vidro.
+## estáticos que seguem a janela. A barra de título (painel azul) fica colada
+## em cima do interior; os outros lados têm a moldura branca e cinza.
 
 signal rect_changed
+signal hit_limit                          # o redimensionamento bateu no mínimo/máximo
+signal button_pressed(button: int)        # clicou e soltou num botão da barra de título
 
 # flags dos lados que estão sendo arrastados
 const L := 1
 const R := 2
 const T := 4
 const B := 8
+
+# botões da barra de título (linha em art/ui/window_buttons.png), da direita para a esquerda
+enum { BTN_CLOSE, BTN_MAXIMIZE, BTN_RESTORE, BTN_MINIMIZE }
+const BUTTONS := [BTN_CLOSE, BTN_MAXIMIZE, BTN_MINIMIZE]
+const BTN_SIZE := 16.0
+const BTN_GAP := 2.0       # espaço entre os botões
+const BTN_MARGIN := 6.0    # da borda direita da barra até o botão de fechar
+# colunas da folha de botões
+const STATE_NORMAL := 0
+const STATE_HOVER := 1
+const STATE_PRESSED := 2
+
+const TEX_TITLEBAR := preload("res://art/ui/window_titlebar.png")   # 9-slice, miolo azul
+const TEX_BODY := preload("res://art/ui/minwin_frame.png")           # 9-slice, sem topo
+const TEX_BUTTONS := preload("res://art/ui/window_buttons.png")
+const HIGHLIGHT := Color("f2f1ed")   # filete claro por fora da janela
+
+var hover_button := -1
+var pressed_button := -1
+var _at_limit := false
+var _title_style: StyleBoxTexture
+var _body_style: StyleBoxTexture
 
 var rect := Rect2()      # interior atual
 var target := Rect2()    # interior desejado (o atual persegue com velocidade limitada)
@@ -29,6 +54,18 @@ func setup(interior: Rect2, min_s: Vector2, max_s: Vector2) -> void:
 	target = interior
 	min_size = min_s
 	max_size = max_s
+	_title_style = StyleBoxTexture.new()
+	_title_style.texture = TEX_TITLEBAR
+	_title_style.set_texture_margin(SIDE_LEFT, 4)
+	_title_style.set_texture_margin(SIDE_RIGHT, 4)
+	_title_style.set_texture_margin(SIDE_TOP, 4)
+	_title_style.set_texture_margin(SIDE_BOTTOM, 3)
+	_body_style = StyleBoxTexture.new()
+	_body_style.texture = TEX_BODY
+	_body_style.draw_center = false  # o miolo é o jogo
+	_body_style.set_texture_margin(SIDE_LEFT, 3)
+	_body_style.set_texture_margin(SIDE_RIGHT, 3)
+	_body_style.set_texture_margin(SIDE_BOTTOM, 3)
 	for i in 4:
 		var body := StaticBody2D.new()
 		body.collision_layer = 2   # vidro
@@ -46,11 +83,11 @@ func is_resizable() -> bool:
 	return min_size.x < max_size.x or min_size.y < max_size.y
 
 
-## Retângulo externo: interior + vidro + barra de título.
+## Retângulo externo: interior + moldura (esquerda, direita, base) + barra de título.
 func outer_rect() -> Rect2:
 	var g := Tuning.GLASS_THICKNESS
 	var t := Tuning.TITLEBAR_H
-	return Rect2(rect.position - Vector2(g, g + t), rect.size + Vector2(g * 2.0, g * 2.0 + t))
+	return Rect2(rect.position - Vector2(g, t), rect.size + Vector2(g * 2.0, g + t))
 
 
 func add_crack(pos: Vector2) -> void:
@@ -58,11 +95,51 @@ func add_crack(pos: Vector2) -> void:
 	queue_redraw()
 
 
+# --- Botões da barra de título ------------------------------------------------
+
+func button_rect(index: int) -> Rect2:
+	var o := outer_rect()
+	var x := o.end.x - BTN_MARGIN - BTN_SIZE * (index + 1) - BTN_GAP * index
+	var y := o.position.y + floorf((Tuning.TITLEBAR_H - BTN_SIZE) / 2.0)
+	return Rect2(x, y, BTN_SIZE, BTN_SIZE)
+
+
+## Botão (BTN_*) sob o ponto p, ou -1.
+func button_at(p: Vector2) -> int:
+	for i in BUTTONS.size():
+		if button_rect(i).has_point(p):
+			return BUTTONS[i]
+	return -1
+
+
+## Atualiza o hover. Devolve true se entrou num botão novo (para tocar o som).
+func update_hover(p: Vector2) -> bool:
+	var b := button_at(p) if drag_sides == 0 else -1
+	if b == hover_button:
+		return false
+	hover_button = b
+	queue_redraw()
+	return b != -1
+
+
+func press_button(b: int) -> void:
+	pressed_button = b
+	queue_redraw()
+
+
+func release_button(p: Vector2) -> void:
+	var b := pressed_button
+	pressed_button = -1
+	queue_redraw()
+	if b != -1 and button_at(p) == b:
+		button_pressed.emit(b)
+
+
 # --- Redimensionar ------------------------------------------------------------
 
 ## Lados (flags) da zona de arrasto sob o ponto p, ou 0 se não há.
 func side_at(p: Vector2) -> int:
-	if not is_resizable():
+	if not is_resizable() or button_at(p) != -1:
 		return 0
 	var o := outer_rect()
 	if not o.grow(3.0).has_point(p):
@@ -132,6 +209,8 @@ func update_resize(mouse: Vector2) -> void:
 	b = minf(b, Tuning.SCREEN_H - Tuning.TASKBAR_H - Tuning.GLASS_THICKNESS)
 
 	# tamanho mínimo e máximo da fase
+	var w0 := rr - l
+	var h0 := b - t
 	if rr - l > max_size.x:
 		if drag_sides & L:
 			l = rr - max_size.x
@@ -155,9 +234,16 @@ func update_resize(mouse: Vector2) -> void:
 
 	target = Rect2(l, t, rr - l, b - t)
 
+	# avisa uma vez quando o mouse passa do limite (som de "não dá")
+	var clamped := not is_equal_approx(w0, rr - l) or not is_equal_approx(h0, b - t)
+	if clamped and not _at_limit:
+		hit_limit.emit()
+	_at_limit = clamped
+
 
 func end_resize() -> void:
 	drag_sides = 0
+	_at_limit = false
 
 
 # --- Física -------------------------------------------------------------------
@@ -194,42 +280,35 @@ func _update_glass() -> void:
 # --- Desenho ------------------------------------------------------------------
 
 func _draw() -> void:
-	var g := Tuning.GLASS_THICKNESS
 	var tb_h := Tuning.TITLEBAR_H
 	var o := outer_rect()
-	var glass := Color(0.55, 0.82, 1.0, 0.6)
-	var shine := Color(1, 1, 1, 0.55)
 
-	# vidro: quatro faixas
-	draw_rect(Rect2(rect.position.x - g, rect.position.y - g, rect.size.x + g * 2.0, g), glass)
-	draw_rect(Rect2(rect.position.x - g, rect.end.y, rect.size.x + g * 2.0, g), glass)
-	draw_rect(Rect2(rect.position.x - g, rect.position.y, g, rect.size.y), glass)
-	draw_rect(Rect2(rect.end.x, rect.position.y, g, rect.size.y), glass)
-	# reflexo
-	draw_rect(Rect2(rect.position.x, rect.end.y, rect.size.x, 1), shine)
-	draw_rect(Rect2(rect.end.x, rect.position.y, 1, rect.size.y), shine)
+	# filete claro por fora (esquerda, topo e base), como na referência
+	draw_rect(Rect2(o.position.x - 1, o.position.y, 1, o.size.y), HIGHLIGHT)
+	draw_rect(Rect2(o.position.x, o.position.y - 1, o.size.x, 1), HIGHLIGHT)
+	draw_rect(Rect2(o.position.x, o.end.y, o.size.x, 1), HIGHLIGHT)
 
-	# barra de título
-	var tb := Rect2(o.position, Vector2(o.size.x, tb_h))
-	draw_rect(tb, Color("2b3a67"))
-	draw_rect(Rect2(tb.position, Vector2(tb.size.x, 1)), Color("5b74c4"))
-	draw_string(ThemeDB.fallback_font, tb.position + Vector2(5, 9), "bicudinho.exe",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("e8eefc"))
-	for i in 3:
-		var bx := tb.end.x - 12.0 - i * 10.0
-		draw_rect(Rect2(bx, tb.position.y + 3, 8, 7), Color("c9d4f5") if i != 0 else Color("d9534f"))
+	# corpo: moldura branca e cinza nos lados e na base (o vidro)
+	draw_style_box(_body_style, Rect2(o.position.x, rect.position.y, o.size.x, o.end.y - rect.position.y))
+	# barra de título: painel azul com borda rosa
+	draw_style_box(_title_style, Rect2(o.position, Vector2(o.size.x, tb_h)))
 
-	# cantos brancos: dica de que dá para redimensionar
+	# botões: coluna = estado, linha = tipo
+	for i in BUTTONS.size():
+		var btn: int = BUTTONS[i]
+		var state := STATE_NORMAL
+		if btn == pressed_button:
+			state = STATE_PRESSED
+		elif btn == hover_button:
+			state = STATE_HOVER
+		var src := Rect2(state * BTN_SIZE, btn * BTN_SIZE, BTN_SIZE, BTN_SIZE)
+		draw_texture_rect_region(TEX_BUTTONS, button_rect(i), src)
+
+	# cantos de baixo: dica de que dá para redimensionar
 	if is_resizable():
 		var c := Color(1, 1, 1, 0.85)
-		var corners := [
-			o.position + Vector2(0, tb_h),
-			Vector2(o.end.x - 4, o.position.y + tb_h),
-			Vector2(o.position.x, o.end.y - 4),
-			o.end - Vector2(4, 4),
-		]
-		for corner in corners:
-			draw_rect(Rect2(corner, Vector2(4, 4)), c)
+		draw_rect(Rect2(Vector2(o.position.x, o.end.y - 3), Vector2(3, 3)), c)
+		draw_rect(Rect2(o.end - Vector2(3, 3), Vector2(3, 3)), c)
 
 	# rachaduras (usadas no passo 3, quando a disparada bate no vidro)
 	for ck in _cracks:

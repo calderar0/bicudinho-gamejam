@@ -13,7 +13,7 @@ const WINDOW_MAX := Vector2(576, 272)
 
 const WALLPAPER_COLOR := Color("4d8f66")
 const SKY_COLOR := Color("a4d8ea")
-const TASKBAR_COLOR := Color("22283a")
+const TASKBAR_TEX := preload("res://art/ui/taskbar.png")
 
 var win: GameWindow
 var tiles: TileWorld
@@ -38,7 +38,11 @@ func _ready() -> void:
 
 	add_child(win)  # por último: a moldura e o vidro desenham por cima de tudo
 
+	add_child(StartMenu.new())  # por último: o menu fica acima de tudo e pega o clique primeiro
+
 	win.rect_changed.connect(_on_rect_changed)
+	win.hit_limit.connect(Audio.play.bind("sfx_window_limit"))
+	win.button_pressed.connect(_on_window_button)
 	_on_rect_changed()
 
 
@@ -87,11 +91,26 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
 		get_tree().reload_current_scene()
 		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var m := get_global_mouse_position()
+		if not event.pressed:
+			win.release_button(m)
+			return
+		var btn := win.button_at(m)
+		if btn != -1:
+			win.press_button(btn)
+			Audio.play("sfx_ui_click")
+			return
 		var sides := win.side_at(m)
 		if sides != 0:
 			win.begin_resize(sides, m)
+			Audio.play("sfx_ui_click", 0.05, -6.0)
+
+
+## Botões da janela do jogo: só de enfeite por enquanto. Fechar o jogo "não pode".
+func _on_window_button(btn: int) -> void:
+	if btn == GameWindow.BTN_CLOSE:
+		Audio.play("sfx_window_limit")
 
 
 func _process(_delta: float) -> void:
@@ -102,6 +121,8 @@ func _process(_delta: float) -> void:
 			win.update_resize(m)
 		else:
 			win.end_resize()
+	if win.update_hover(m):
+		Audio.play("sfx_ui_hover", 0.05, -4.0)
 	_update_cursor(m)
 
 
@@ -127,6 +148,6 @@ func _draw() -> void:
 	var area := Rect2(0, 0, Tuning.SCREEN_W, Tuning.SCREEN_H - Tuning.TASKBAR_H)
 	draw_rect(area, WALLPAPER_COLOR)
 	draw_rect(win.rect, SKY_COLOR)  # o céu só existe dentro da janela
-	draw_rect(Rect2(0, Tuning.SCREEN_H - Tuning.TASKBAR_H, Tuning.SCREEN_W, Tuning.TASKBAR_H), TASKBAR_COLOR)
-	draw_string(ThemeDB.fallback_font, Vector2(8, Tuning.SCREEN_H - 6),
-		"Arraste as bordas do vidro   R: reiniciar", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("e8eefc"))
+	draw_texture_rect(TASKBAR_TEX, Rect2(0, Tuning.SCREEN_H - Tuning.TASKBAR_H, Tuning.SCREEN_W, Tuning.TASKBAR_H), false)
+	draw_string(ThemeDB.fallback_font, Vector2(26, Tuning.SCREEN_H - 5),
+		"bicudinho.exe", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("f2f1ed"))

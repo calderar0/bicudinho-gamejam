@@ -15,6 +15,7 @@ var coyote := 0.0
 var jump_buffer := 0.0
 var anim_time := 0.0
 var dead := false
+var _step_phase := 0.0
 
 ## Função que recebe a caixa do bicudinho (Rect2) e devolve "river", "trash" ou "".
 var hazard_check: Callable = Callable()
@@ -66,6 +67,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = Tuning.JUMP_VELOCITY
 		jump_buffer = 0.0
 		coyote = 0.0
+		Audio.play("sfx_jump", 0.05)
 
 	# altura variável: soltar o botão corta a subida
 	if Input.is_action_just_released("jump") and velocity.y < 0.0:
@@ -84,9 +86,21 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	_check_hazard()
+	_step_sounds(delta)
 
 	if Tuning.DEBUG_MEASURE:
 		_measure()
+
+
+## Um passo a cada 2 quadros da animação de andar (quadros 1 e 3).
+func _step_sounds(delta: float) -> void:
+	if not is_on_floor() or absf(velocity.x) <= 10.0:
+		_step_phase = 0.0
+		return
+	var before := int(_step_phase)
+	_step_phase += delta * Tuning.WALK_FPS / 2.0
+	if int(_step_phase) != before:
+		Audio.play("sfx_step", 0.08, -4.0)
 
 
 func _measure() -> void:
