@@ -13,9 +13,3 @@ script = ExtResource("1_o3l24")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1775902060]
 position = Vector2(0, -7)
 shape = SubResource("RectangleShape2D_fapdk")
-
-[node name="ColorRect" type="ColorRect" parent="." unique_id=1370625895]
-offset_left = -6.0
-offset_top = -14.0
-offset_right = 6.0
-color = Color(1, 0, 0, 1)

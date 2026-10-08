@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cjeknrabn5sn6"]
+
+[ext_resource type="Script" uid="uid://cuijkfrq28o3u" path="res://scripts/fase_teste.gd" id="1_kj67y"]
+
+[node name="TesteJanela" type="Node2D" unique_id=1651668438]
+script = ExtResource("1_kj67y")
