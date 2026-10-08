@@ -61,6 +61,12 @@ const DASH_FPS := 16.0
 const JUMP_FPS := 12.0           # o pulinho toca uma vez e fica no último quadro
 const DEAD_FPS := 6.0            # a morte toca uma vez (4 quadros em ~0,67 s)
 
+# --- Sons ---------------------------------------------------------------------
+## Volume dos passos em dB (0 = original, -6 = metade, mais negativo = mais baixo).
+const STEP_VOLUME_DB := -14.0
+## Quantos passos tocam por segundo enquanto ele anda.
+const STEPS_PER_SECOND := 4.0
+
 # --- Janela do jogo e vidro ---------------------------------------------------
 const GLASS_THICKNESS := 3.0     # espessura visual do vidro (moldura preta + cinza)
 const GLASS_COLLIDER := 16.0     # espessura da colisão (maior, para não ser atravessada)

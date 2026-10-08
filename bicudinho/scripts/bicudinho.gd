@@ -241,15 +241,15 @@ func _stun(delta: float) -> void:
 
 # --- Medição, perigos, empurrão da janela e morte -----------------------------
 
-## Um passo a cada 2 quadros da animação de andar (quadros 1 e 3).
+## Passos no ritmo de Tuning.STEPS_PER_SECOND enquanto anda no chão.
 func _step_sounds(delta: float) -> void:
 	if not is_on_floor() or absf(velocity.x) <= 10.0:
 		_step_phase = 0.0
 		return
 	var before := int(_step_phase)
-	_step_phase += delta * Tuning.WALK_FPS / 2.0
+	_step_phase += delta * Tuning.STEPS_PER_SECOND
 	if int(_step_phase) != before:
-		Audio.play("sfx_step", 0.08, -4.0)
+		Audio.play("sfx_step", 0.08, Tuning.STEP_VOLUME_DB)
 
 
 func _measure() -> void:
