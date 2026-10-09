@@ -6,11 +6,15 @@ extends Node2D
 ##
 ## O tamanho (Tuning.ICON_SIZE) vale para tudo: desenho, colisão, clique e regras de largar.
 ##
-## Tipos: folder, file, image (arrastáveis), app (fixo), virus (some se for cortado),
-## brejo (a saída da fase), notepad, viewer, help.
+## Tipos: folder, trash (lixeira), image (foto), file, app, virus, notepad, viewer, help e
+## brejo (o objetivo da fase). Duplo clique abre o que o ícone guarda:
+##   notepad            -> o bloco de notas da fase
+##   com `contents`     -> uma janela de pasta com os arquivos de dentro (folder, trash...)
+##   com `file_data`    -> o arquivo direto (uma foto ou um texto)
 
 const COLORS := {
 	"folder": Color("f2c14e"),
+	"trash": Color("9aa0aa"),
 	"file": Color("f4f4ee"),
 	"image": Color("5aa9e6"),
 	"app": Color("8a8d99"),
@@ -22,12 +26,18 @@ const COLORS := {
 }
 
 var type := "folder"
+var label := ""             # nome embaixo do ícone enquanto está fora da janela
 var draggable := true
 var solid := true           # o bicudinho colide quando está dentro da janela
 var hide_outside := false   # some quando não está inteiro dentro da janela
 var inside := false         # está inteiro dentro da janela agora
 var dragging := false
 var show_art := true        # false: o ícone vale (colisão, regra de ouro) mas não se desenha
+## Pasta: true se abre uma janela (mesmo vazia). `contents` são os arquivos de dentro.
+var is_container := false
+var contents: Array = []
+## Arquivo direto: {"kind": "image", "name", "photo", "caption", "credit"} ou {"kind": "text", ...}.
+var file_data: Dictionary = {}
 
 var _shape: CollisionShape2D
 var _tex: Texture2D = null
@@ -36,8 +46,9 @@ var _was_inside := false
 var _art_shift_y := 0.0     # sobe a arte pela margem transparente do topo do PNG
 
 
-func setup(icon_type: String, pos: Vector2, can_drag: bool) -> void:
+func setup(icon_type: String, pos: Vector2, can_drag: bool, icon_label := "") -> void:
 	type = icon_type
+	label = icon_label
 	position = pos
 	draggable = can_drag
 	solid = type != "brejo"
@@ -62,11 +73,14 @@ func setup(icon_type: String, pos: Vector2, can_drag: bool) -> void:
 	add_child(body)
 
 
-## "notepad" se o duplo clique abre o bloco de notas, senão "".
-## (viewer e help abrem a mini-janela de imagem no passo 5.)
+## O que o duplo clique abre: "notepad", "folder", "file", ou "" se não abre nada.
 func opens() -> String:
 	if type == "notepad":
 		return "notepad"
+	if is_container:
+		return "folder"
+	if not file_data.is_empty():
+		return "file"
 	return ""
 
 
@@ -84,6 +98,7 @@ func update_inside(interior: Rect2) -> void:
 	if type == "virus" and _was_inside and was_visible and not visible:
 		Audio.play("sfx_icon_vanish")  # some em silêncio até o som existir
 	_was_inside = inside
+	queue_redraw()  # o nome só aparece fora da janela e quando não está na mão
 
 
 func _process(delta: float) -> void:
@@ -111,3 +126,13 @@ func _draw() -> void:
 	if type == "brejo":
 		var pulse := 0.5 + 0.5 * sin(_time * 4.0)
 		draw_rect(Rect2(-1, -1, s + 2.0, s + 2.0), Color(1, 1, 0.6, 0.35 + 0.4 * pulse), false, 1.0)
+	if label != "" and not inside and not dragging:
+		_draw_label()
+
+
+## Nome embaixo do ícone, como num desktop de verdade.
+func _draw_label() -> void:
+	var font := ThemeDB.fallback_font
+	var at := Vector2(Tuning.ICON_SIZE / 2.0 - 32.0, Tuning.ICON_SIZE + 9.0)
+	draw_string(font, at + Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_CENTER, 64, 8, Color(0, 0, 0, 0.6))
+	draw_string(font, at, label, HORIZONTAL_ALIGNMENT_CENTER, 64, 8, Color("f2f1ed"))

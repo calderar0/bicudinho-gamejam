@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://b8amc4gp8a82u"]
 
-[ext_resource type="Script" path="res://scripts/fase_01.gd" id="1_fase01"]
+[ext_resource type="Script" uid="uid://c5bgp6h1b5lji" path="res://scripts/fase_01.gd" id="1_fase01"]
 
-[node name="Level01" type="Node2D"]
+[node name="Level01" type="Node2D" unique_id=2131006564]
 script = ExtResource("1_fase01")
