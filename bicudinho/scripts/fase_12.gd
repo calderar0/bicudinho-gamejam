@@ -19,7 +19,10 @@ func _setup_level() -> void:
 	with_nest = true                        # ela espera no pé do ninho
 	auto_walk = true
 	icons_data = [
-		{"type": "folder", "x": 288, "y": 32, "label": "ninho"},
+		{"type": "folder", "x": 288, "y": 32, "label": "ninho", "contents": [
+			{"kind": "image", "name": "ninho.jpg", "photo": "ninho_01",
+				"caption": "Um ninho de verdade, feito de gravetos."},
+		]},
 		{"type": "folder", "x": 352, "y": 32, "label": "galhos"},
 	]
 	level_name = "Fase 12: A bicudinha"

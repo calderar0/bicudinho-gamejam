@@ -432,6 +432,10 @@ func _draw_title(o: Rect2, tb_h: float) -> void:
 	if frozen:
 		t += " (Não respondendo)"
 	var x := o.position.x + 8.0
+	# janela estreita: se o nome não cabe junto com as penas antes dos botões, ele sai
+	var room := o.size.x - 8.0 - (BTN_SIZE + BTN_GAP) * BUTTONS.size() - BTN_MARGIN - 18.0 * Tuning.LIVES
+	if font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x + 8.0 > room:
+		t = ""
 	if t != "":
 		draw_string(font, Vector2(x, o.position.y + 16.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 8,
 			Color("2b2b3a") if frozen else Color("f2f1ed"))
