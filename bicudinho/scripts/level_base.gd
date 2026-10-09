@@ -19,7 +19,16 @@ const COLS := 40
 const ROWS := 21
 const BICUDINHO_SCENE := preload("res://scenes/bicudinho.tscn")
 const TASKBAR_TEX := preload("res://art/ui/taskbar.png")
+const WALLPAPER_TEX := preload("res://art/ui/wallpaper.png")   # 640x360, a tela toda
 const WIN_RESTART_TIME := 1.5   # segundos entre chegar no objetivo e ir para a próxima fase
+## Barra de tarefas: um botão por janela aberta (o jogo e as mini-janelas), com ícone.
+const TASK_X := 26.0
+const TASK_W := 104.0
+const TASK_ICON_PATHS := {
+	"game": "res://art/icon_brejo.png", "notepad": "res://art/icon_notepad.png",
+	"folder": "res://art/icon_folder.png", "photo": "res://art/icon_viewer.png",
+	"ad": "res://art/icon_virus.png", "text": "res://art/icon_file.png",
+}
 
 # --- Dados da fase: a fase preenche estes campos em _setup_level() -----------------
 
@@ -41,6 +50,9 @@ var goal := "twig"
 ## Ícones do desktop (x e y são px do canto superior esquerdo). Cada um é um dicionário:
 ##   {"type": "folder", "x": 0, "y": 64, "draggable": true, "label": "nome"}
 ## Tipos: folder, trash, image, file, app, virus, notepad, viewer, help.
+## "behind": true -> começa escondido atrás da janela do jogo: não faz parte do mundo, não
+## dá para clicar e só aparece o pedaço que a janela não cobre. Quando a janela sai de cima
+## dele por inteiro (encolhendo), vira um ícone comum do desktop.
 ## Duplo clique abre o que o ícone guarda (todos os campos abaixo são opcionais):
 ##   "contents": [ arquivos ]  -> abre uma janela de pasta com esses arquivos (pode ser [])
 ##   "photo": "nome"           -> abre uma foto direto (veja arquivos de foto abaixo)
@@ -58,13 +70,27 @@ var note_title := "dica.txt"
 var note_pos := Vector2(8, 216)
 var note_size := Vector2(136, 60)
 var note_open_at_start := true
-## Texto da barra de tarefas e mensagem que aparece quando vence.
-var hint := "Espaço no ar: preparar | setas: mirar | segurar ↑ caindo: planar | R: reiniciar"
+## Nome da fase, na barra de título da janela (antes das penas). Ex.: "Fase 3: Estica".
+var level_name := ""
+## Antigo texto da barra de tarefas. Não aparece mais: a barra mostra as janelas abertas.
+var hint := ""
 ## Vazio: o texto padrão do objetivo ("Pegou um graveto!" ou "Achou a bicudinha!").
 var win_text := ""
 ## Próxima fase (caminho da cena). Vazio: recomeça esta (ainda não existe a próxima).
 var next_level := ""
+## A saída que foge: lista de lugares (os pés, como exit_feet) para onde ela pula quando o
+## bicudinho chega perto. Ela só vai para um lugar que não esteja inteiro dentro da janela;
+## se a janela cobrir todos, ela não tem para onde ir. Vazio = a saída fica parada.
+var exit_spots: Array = []
+## A base da janela subindo rápido lança o bicudinho (trampolim).
+var bottom_launch := false
+## O bicudinho anda sozinho e o teclado não faz nada: só o mouse (fase da bicudinha).
+var auto_walk := false
+## A janela do jogo está travada ("Não respondendo"): só ícones e mini-janelas mexem.
+var window_frozen := false
 var wallpaper_color := Color("4d8f66")
+## Tom aplicado por cima do papel de parede (branco = a imagem como ela é).
+var wallpaper_tint := Color.WHITE
 var sky_color := Color("a4d8ea")
 
 # --- Estado -------------------------------------------------------------------------
@@ -93,6 +119,58 @@ var _notepad: MiniWindow = null
 var _viewer: PhotoWindow = null
 var _text_window: MiniWindow = null
 var _folder_windows: Dictionary = {}   # DeskIcon -> FolderWindow
+var _task_icons: Dictionary = {}
+var _cursor_shape := -1
+
+# --- Coleção de gravetos: uma foto por fase vencida, na pasta "gravetos" do desktop ------
+
+## Número da fase -> [pedaço do nome do arquivo, nome da fase]. A foto é art/photos/graveto_NN.
+const TWIG_NAMES := {
+	1: ["brejo", "Fase 1: Brejo"], 2: ["arrasta", "Fase 2: Arrasta"], 3: ["estica", "Fase 3: Estica"],
+	4: ["corta", "Fase 4: Corta"], 5: ["esconde", "Fase 5: Esconde"], 6: ["notas", "Fase 6: Notas"],
+	7: ["enquadra", "Fase 7: Enquadra"], 8: ["trampolim", "Fase 8: Trampolim"],
+	9: ["cidade", "Fase 9: Cidade"], 10: ["copia", "Fase 10: Cópia"], 11: ["noite", "Fase 11: Noite"],
+}
+## Onde fica a pasta de gravetos. Zero = acha sozinho um canto livre do desktop.
+var twig_folder_pos := Vector2.ZERO
+## Onde ficam as pastas "fotos" e "trabalho" ({"fotos": Vector2(...)}); sem = acha sozinho.
+var desktop_folder_pos := {}
+## A pasta "fotos": as fotos do começo do jogo.
+const PHOTOS_FILES := [
+	{"kind": "image", "name": "rio_01.jpg", "photo": "rio_01", "caption": "O rio Tietê, onde tudo começa."},
+	{"kind": "image", "name": "rio_02.jpg", "photo": "rio_02", "caption": "O Tietê mais adiante."},
+	{"kind": "image", "name": "brejo_01.jpg", "photo": "brejo_01", "caption": "O brejo limpo: o lar do bicudinho."},
+	{"kind": "image", "name": "lixo_01.jpg", "photo": "lixo_01", "caption": "Lixo no rio: o que sobra da cidade."},
+	{"kind": "image", "name": "bicudinho.jpg", "photo": "bicudinho_01", "caption": "O bicudinho-do-brejo-paulista."},
+]
+## A pasta "créditos": quem fez o jogo e o material de terceiros (veja CREDITS.md).
+const CREDIT_FILES := [
+	{"kind": "text", "name": "equipe.txt", "text": "Bicudinho, feito para a GameRex 2026.\n\nBianca Valenciani\nFelipe Calderaro\nLetícia Akemi Ikemoto"},
+	{"kind": "text", "name": "terceiros.txt", "text": "Arte da interface: DampSquib (Computer Icons Asset Pack).\n\nSons: matthewvakaliuk73627, 47313572 e soundshelfstudio (Pixabay); Tuudurt (CC0); heyheytheree (CC BY 4.0).\n\nMúsica: hmmm101, Pixel Song #10 (CC0)."},
+]
+## A pasta "trabalho": um texto curto sobre a espécie.
+const WORK_FILES := [
+	{"kind": "text", "name": "bicudinho.txt", "text": "Bicudinho-do-brejo-paulista\n(Formicivora paludicola)\n\nUm passarinho pequeno que só existe no estado de São Paulo. Foi descrito pela ciência em 2013.\n\nVive em brejos com taboa, nas várzeas do alto rio Tietê e do rio Paraíba do Sul, perto da cidade.\n\nEstá criticamente ameaçado de extinção: os brejos somem com aterros, represas, queimadas e o crescimento da cidade.\n\nCuidar dos brejos é cuidar dele."},
+]
+var twig_folder: DeskIcon
+## A janela do jogo está minimizada: o mundo some e só fica o desktop.
+var _minimized := false
+## Nós do mundo que somem ao minimizar (a fase pode acrescentar os seus, como a ponte).
+var world_nodes: Array[Node] = []
+const HUB_SCENE := "res://scenes/desktop.tscn"
+## "Janela" longe da tela: usada para atualizar os ícones do desktop com a janela minimizada.
+const NO_WINDOW := Rect2(-9999, -9999, 0, 0)
+## O desktop principal (os .exe das fases): sem janela do jogo, nem botão dela na barra.
+var is_hub := false
+## Trava todos os ícones da fase no lugar (só nos créditos, onde a ponte de nomes é a cena).
+var lock_icons := false
+## Os .exe das fases liberadas: no desktop principal sempre; nas fases, só minimizado.
+var exe_icons: Array[DeskIcon] = []
+const EXES := {
+	1: "1 brejo.exe", 2: "2 arrasta.exe", 3: "3 estica.exe", 4: "4 corta.exe",
+	5: "5 esconde.exe", 6: "6 notas.exe", 7: "7 enquadra.exe", 8: "8 trampolim.exe",
+	9: "9 cidade.exe", 10: "10 copia.exe", 11: "11 noite.exe", 12: "12 bicudinha.exe",
+}
 
 
 ## A fase sobrescreve: preenche os campos acima.
@@ -115,6 +193,11 @@ func _ready() -> void:
 	win = GameWindow.new()
 	win.process_physics_priority = -10  # a janela se move antes do bicudinho
 	win.setup(window_rect, window_min, window_max)
+	win.frozen = window_frozen
+	win.title_text = level_name
+	for k in TASK_ICON_PATHS:
+		if ResourceLoader.exists(TASK_ICON_PATHS[k]):
+			_task_icons[k] = load(TASK_ICON_PATHS[k])
 
 	tiles = TileWorld.new()
 	tiles.setup(_build_map())
@@ -129,8 +212,11 @@ func _ready() -> void:
 	for entry: Dictionary in icons_data:
 		_add_icon_from_data(entry)
 
+	_add_desktop_folders()
+	_add_exe_icons()
+
 	var s := Tuning.ICON_SIZE
-	exit_icon = _add_icon("brejo", Vector2(exit_feet.x - s / 2.0, exit_feet.y - s), false)
+	exit_icon = _add_icon("brejo", Vector2(exit_feet.x - s / 2.0, exit_feet.y - s), false, "brejo")
 	# o graveto ou a bicudinha É o destino: a árvore não se desenha, mas o ícone continua
 	# valendo (chegar nele vence, e some se a janela o cortar)
 	if goal == "female":
@@ -146,6 +232,8 @@ func _ready() -> void:
 
 	bird = BICUDINHO_SCENE.instantiate() as Bicudinho
 	bird.position = bird_start
+	bird.auto_walk = auto_walk
+	bird.launch_enabled = bottom_launch
 	bird.hazard_check = Callable(tiles, "hazard_hit")
 	bird.died.connect(_on_bird_died)
 	bird.glass_hit.connect(win.add_crack)  # a batida no vidro desenha uma rachadura
@@ -177,6 +265,12 @@ func _ready() -> void:
 	win.rect_changed.connect(_on_rect_changed)
 	win.hit_limit.connect(Audio.play.bind("sfx_window_limit"))
 	win.button_pressed.connect(_on_window_button)
+	world_nodes.append_array([tiles, bird, win])
+	world_nodes.append_array(panes)
+	if twig != null:
+		world_nodes.append(twig)
+	if female != null:
+		world_nodes.append(female)
 	_on_rect_changed()
 	Audio.resume_music()  # a vitória para a música; ao recomeçar, ela volta
 
@@ -218,7 +312,13 @@ func _add_icon(type: String, pos: Vector2, can_drag: bool, label := "") -> DeskI
 func _add_icon_from_data(entry: Dictionary) -> void:
 	var label := str(entry.get("label", ""))
 	var ic := _add_icon(str(entry.type), Vector2(float(entry.x), float(entry.y)),
-		bool(entry.get("draggable", true)), label)
+		not lock_icons, label)  # todo ícone pode ser movido (o "draggable" antigo não vale mais)
+	ic.behind = bool(entry.get("behind", false))
+	ic.launch = str(entry.get("launch", ""))
+	if ic.launch != "":
+		ic.hide_outside = false  # .exe de fase: sempre à vista no desktop, nunca vira chão
+		ic.desktop_only = true
+		ic.solid = false
 	if entry.has("contents"):
 		ic.is_container = true
 		ic.contents = entry.contents
@@ -237,18 +337,61 @@ func _on_rect_changed() -> void:
 		_push_icons_out()
 	for ic in icons:
 		ic.update_inside(win.rect)
-	if female != null:
-		female.visible = exit_icon.visible  # regra de ouro: ela só existe junto do objetivo
-	if twig != null:
-		twig.visible = exit_icon.visible
+	_refresh_exit()
 	bird.enforce_inside(win.rect)
 	queue_redraw()
+
+
+## O objetivo segue a regra de ouro: dentro da janela é o graveto (ou a bicudinha); fora, o
+## ícone do brejo no desktop, como pista de para onde ir.
+func _refresh_exit() -> void:
+	exit_icon.update_inside(win.rect)
+	if female != null:
+		female.visible = exit_icon.inside
+	if twig != null:
+		twig.visible = exit_icon.inside
+	if goal != "brejo":
+		exit_icon.hide_outside = false
+		exit_icon.show_art = not exit_icon.inside
+		exit_icon.visible = true
+		exit_icon.queue_redraw()
+
+
+## Muda a saída de lugar (pés em feet), levando junto o graveto ou a bicudinha.
+func move_exit(feet: Vector2) -> void:
+	exit_feet = feet
+	var s := Tuning.ICON_SIZE
+	exit_icon.position = Vector2(feet.x - s / 2.0, feet.y - s)
+	if twig != null:
+		twig.position = feet
+	if female != null:
+		female.position = feet
+	_refresh_exit()
+
+
+## A saída que foge: o bicudinho chegou perto? Ela pula para o próximo lugar da lista que não
+## esteja inteiro dentro da janela. Se não houver nenhum, fica (foi cercada).
+func _flee_exit() -> void:
+	if exit_spots.is_empty() or not exit_icon.inside:
+		return
+	if not bird.box_rect().grow(Tuning.EXIT_FLEE_DIST).intersects(exit_icon.rect()):
+		return
+	var s := Tuning.ICON_SIZE
+	var cur := exit_spots.find(exit_feet)
+	for k in range(1, exit_spots.size() + 1):
+		var spot: Vector2 = exit_spots[(cur + k) % exit_spots.size()]
+		if spot == exit_feet:
+			continue
+		if not win.rect.encloses(Rect2(spot.x - s / 2.0, spot.y - s, s, s)):
+			move_exit(spot)
+			Audio.play("sfx_ui_hover", 0.0, -2.0)  # "pulou!"
+			return
 
 
 func _icon_at(m: Vector2) -> DeskIcon:
 	for i in range(icons.size() - 1, -1, -1):
 		var ic := icons[i]
-		if ic.visible and ic.rect().has_point(m):
+		if ic.visible and not ic.behind and ic.rect().has_point(m):
 			return ic
 	return null
 
@@ -293,6 +436,8 @@ func _end_icon_drag() -> void:
 ## objetivo ou sobre outro ícone.
 func _drop_valid(ic: DeskIcon, p: Vector2) -> bool:
 	var r := Rect2(p, Vector2(Tuning.ICON_SIZE, Tuning.ICON_SIZE))
+	if (_minimized or ic.desktop_only) and win.outer_rect().intersects(r):
+		return false  # é o lugar da janela minimizada
 	var fully_inside := win.rect.encloses(r)
 	if not fully_inside and win.outer_rect().intersects(r):
 		return false  # meio dentro, meio fora: na moldura da janela
@@ -317,8 +462,8 @@ func _push_icons_out() -> void:
 	var outer := win.outer_rect()
 	var s := Tuning.ICON_SIZE
 	for ic in icons:
-		if not ic.draggable or ic.dragging:
-			continue
+		if not ic.draggable or ic.dragging or ic.behind or ic.desktop_only:
+			continue  # escondido ou só do desktop: fica onde está (a janela passa por cima)
 		var r := ic.rect()
 		if win.rect.encloses(r) or not outer.intersects(r):
 			continue
@@ -436,6 +581,9 @@ func _place_window(w: MiniWindow) -> void:
 
 func _open_icon(ic: DeskIcon) -> void:
 	match ic.opens():
+		"launch":
+			Audio.play("sfx_window_open")
+			get_tree().change_scene_to_file(ic.launch)
 		"notepad":
 			_open_notepad()
 		"folder":
@@ -513,15 +661,18 @@ func _physics_process(_delta: float) -> void:
 	for w in _windows:
 		w.update_platform(win.rect)  # o topo das mini-janelas é plataforma
 	_update_bird_layer()
-	if _won or _restarting or bird.dead:
+	if _won or _restarting or bird.dead or _minimized:
 		return
-	# o objetivo só existe (visível) quando está inteiro dentro da janela
-	if exit_icon.visible and bird.box_rect().intersects(exit_icon.rect()):
+	_flee_exit()
+	# o objetivo só existe quando está inteiro dentro da janela
+	if exit_icon.inside and bird.box_rect().intersects(exit_icon.rect()):
 		_win_level()
 
 
 func _win_level() -> void:
 	_won = true
+	if _level_number() > 0:
+		Progress.beat(_level_number())  # libera o .exe da próxima fase no desktop
 	if female != null:
 		bird.celebrate()  # última fase: para e fica feliz
 		female.set_happy(true)  # ela também fica feliz e solta um coração
@@ -529,6 +680,7 @@ func _win_level() -> void:
 		bird.celebrate(false)  # pega o graveto e para, sem festa
 		if twig != null:
 			twig.pick_up()
+			_collect_twig()
 	Audio.stop_music()
 	Audio.play("sfx_win_level", 0.0, Tuning.WIN_VOLUME_DB)
 	queue_redraw()
@@ -561,6 +713,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var m := get_global_mouse_position()
+		if event.pressed and _press_taskbar(m):
+			return
 		if not event.pressed:
 			win.release_button(m)
 			for w in _windows:
@@ -578,7 +732,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if w.handle_press(m):
 				_raise(w)
 				return
-		var btn := win.button_at(m)
+		var btn := win.button_at(m) if not _minimized else -1
 		if btn != -1:
 			win.press_button(btn)
 			Audio.play("sfx_ui_click")
@@ -590,16 +744,52 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif ic.draggable:
 				_start_icon_drag(ic, m)
 			return
-		var sides := win.side_at(m)
+		var sides := win.side_at(m) if not _minimized else 0
 		if sides != 0:
 			win.begin_resize(sides, m)
 			Audio.play("sfx_ui_click", 0.05, -6.0)
+		elif not _minimized and win.title_at(m):
+			win.begin_resize(GameWindow.MOVE, m)  # arrasta a janela inteira
 
 
 ## Botões da janela do jogo: só de enfeite por enquanto. Fechar o jogo "não pode".
 func _on_window_button(btn: int) -> void:
-	if btn == GameWindow.BTN_CLOSE:
-		Audio.play("sfx_window_limit")
+	match btn:
+		GameWindow.BTN_CLOSE:
+			get_tree().change_scene_to_file(HUB_SCENE)  # fecha a fase: volta para o desktop
+		GameWindow.BTN_MINIMIZE:
+			set_minimized(true)
+		_:
+			Audio.play("sfx_window_limit")
+
+
+## Minimiza (o mundo some, o desktop fica) ou restaura a janela do jogo. O botão da fase na
+## barra de tarefas também faz isso.
+func set_minimized(on: bool, silent := false) -> void:
+	if _minimized == on:
+		return
+	_minimized = on
+	if on and win.drag_sides != 0:
+		win.end_resize()
+	for n in world_nodes:
+		if is_instance_valid(n):
+			n.visible = not on
+			n.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT
+	for ic in icons:
+		if ic.inside:
+			ic.visible = not on
+	exit_icon.visible = not on and exit_icon.visible
+	for ic in exe_icons:
+		ic.shown = on or is_hub
+	if on:
+		# minimizada, a janela não cobre nada: os ícones do desktop aparecem inteiros
+		for ic in icons:
+			if ic.desktop_only:
+				ic.update_inside(NO_WINDOW)
+	if not on:
+		_on_rect_changed()
+	if not silent:
+		Audio.play("sfx_ui_click", 0.05, -6.0)
 
 
 ## Algum elemento de interface (menu Iniciar aberto ou janela) está sob o ponto m?
@@ -618,6 +808,7 @@ func _ui_covers(m: Vector2) -> bool:
 
 
 func _process(_delta: float) -> void:
+	queue_redraw()  # a barra de tarefas acompanha as janelas que abrem e fecham
 	var m := get_global_mouse_position()
 	# arrastos por polling: continuam mesmo se o mouse passar por outro nó
 	if _drag_icon != null:
@@ -656,7 +847,7 @@ func _update_cursor(m: Vector2) -> void:
 			if ic.draggable or ic.opens() != "":
 				shape = Input.CURSOR_POINTING_HAND
 		else:
-			var sides := win.drag_sides if win.drag_sides != 0 else win.side_at(m)
+			var sides := win.drag_sides if win.drag_sides != 0 else (0 if _minimized else win.side_at(m))
 			if sides != 0:
 				var h := sides & (GameWindow.L | GameWindow.R)
 				var v := sides & (GameWindow.T | GameWindow.B)
@@ -667,7 +858,11 @@ func _update_cursor(m: Vector2) -> void:
 					shape = Input.CURSOR_HSIZE
 				else:
 					shape = Input.CURSOR_VSIZE
-	Input.set_default_cursor_shape(shape)
+	if win.drag_sides == GameWindow.MOVE:
+		shape = Input.CURSOR_MOVE
+	if shape != _cursor_shape:
+		_cursor_shape = shape
+		Input.set_default_cursor_shape(shape)
 
 
 # --- Fundo: desktop falso -----------------------------------------------------------
@@ -675,14 +870,206 @@ func _update_cursor(m: Vector2) -> void:
 func _draw() -> void:
 	var area := Rect2(0, 0, Tuning.SCREEN_W, Tuning.SCREEN_H - Tuning.TASKBAR_H)
 	draw_rect(area, wallpaper_color)
-	draw_rect(win.rect, sky_color)  # o céu só existe dentro da janela
+	draw_texture_rect(WALLPAPER_TEX, Rect2(0, 0, Tuning.SCREEN_W, Tuning.SCREEN_H), false, wallpaper_tint)
+	if not _minimized:
+		draw_rect(win.rect, sky_color)  # o céu só existe dentro da janela
 	draw_texture_rect(TASKBAR_TEX, Rect2(0, Tuning.SCREEN_H - Tuning.TASKBAR_H, Tuning.SCREEN_W, Tuning.TASKBAR_H), false)
-	draw_string(ThemeDB.fallback_font, Vector2(26, Tuning.SCREEN_H - 5), hint,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("f2f1ed"))
+	_draw_taskbar()
 	var text := win_text
 	if text == "":
 		text = "Achou a bicudinha!" if goal == "female" else "Pegou um graveto!"
 	if _won:
-		draw_string(ThemeDB.fallback_font, win.rect.get_center() + Vector2(-60, -40), text,
-			HORIZONTAL_ALIGNMENT_CENTER, 120, 16, Color("2f3a8f"))
+		draw_string(ThemeDB.fallback_font, Vector2(win.rect.position.x, win.rect.get_center().y - 40.0),
+			text, HORIZONTAL_ALIGNMENT_CENTER, win.rect.size.x, 16, Color("2f3a8f"))
 
+
+# --- Barra de tarefas: as janelas abertas -------------------------------------------
+
+## Um item por janela aberta: [nome, chave do ícone, a mini-janela (null = a do jogo)].
+func _taskbar_items() -> Array:
+	var items: Array = []
+	if not is_hub:
+		items.append([level_name if level_name != "" else "Bicudinho", "game", null])
+	for w in _windows:
+		if not w.visible:
+			continue
+		var kind := "text"
+		if w == _notepad:
+			kind = "notepad"
+		elif w is FolderWindow:
+			kind = "folder"
+		elif w is PhotoWindow:
+			kind = "photo"
+		elif w is AdWindow:
+			kind = "ad"
+		items.append([w.title, kind, w])
+	return items
+
+
+func _task_rect(i: int, count: int) -> Rect2:
+	var w := minf(TASK_W, (Tuning.SCREEN_W - TASK_X - 4.0) / maxi(count, 1) - 2.0)
+	return Rect2(TASK_X + i * (w + 2.0), Tuning.SCREEN_H - Tuning.TASKBAR_H + 2.0, w, Tuning.TASKBAR_H - 4.0)
+
+
+## Clique num botão da barra: a mini-janela vem para a frente; a do jogo minimiza ou volta.
+## (A música liga e desliga pelo menu Iniciar.)
+func _press_taskbar(m: Vector2) -> bool:
+	var items := _taskbar_items()
+	for i in items.size():
+		if _task_rect(i, items.size()).has_point(m):
+			var w: MiniWindow = items[i][2]
+			if w != null:
+				_raise(w)
+				Audio.play("sfx_ui_click", 0.05, -6.0)
+			else:
+				set_minimized(not _minimized)
+			return true
+	return false
+
+
+func _draw_taskbar() -> void:
+	var items := _taskbar_items()
+	var top := _top_window()
+	var font := ThemeDB.fallback_font
+	for i in items.size():
+		var r := _task_rect(i, items.size())
+		var active: bool = items[i][2] == top and top != null
+		if items[i][2] == null:
+			active = not _minimized and top == null  # a janela do jogo, quando está à frente
+		# botão em relevo (afundado quando é a janela da frente)
+		draw_rect(r, Color("4a55a8") if active else Color("3a4596"))
+		draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), Color(0, 0, 0, 0.5) if active else Color(1, 1, 1, 0.35))
+		draw_rect(Rect2(r.position.x, r.end.y - 1, r.size.x, 1), Color(1, 1, 1, 0.25) if active else Color(0, 0, 0, 0.5))
+		var tex: Texture2D = _task_icons.get(items[i][1])
+		var x := r.position.x + 3.0
+		if tex != null:
+			draw_texture_rect(tex, Rect2(x, r.position.y + 1, 14, 14), false)
+			x += 17.0
+		draw_string(font, Vector2(x, r.end.y - 4), str(items[i][0]), HORIZONTAL_ALIGNMENT_LEFT,
+			r.end.x - x - 3.0, 8, Color("f2f1ed"))
+
+
+# --- Pasta de gravetos -----------------------------------------------------------------
+
+## O número desta fase, tirado do nome da cena (level_07.tscn -> 7). 0 = não é uma fase.
+func _level_number() -> int:
+	var f := scene_file_path.get_file()
+	if not f.begins_with("level_"):
+		return 0
+	return f.trim_prefix("level_").get_basename().to_int()
+
+
+## As fotos da pasta: um graveto por fase vencida, em ordem.
+func _twig_files() -> Array:
+	var files: Array = []
+	var nums := Progress.collected.duplicate()
+	nums.sort()
+	for n: int in nums:
+		if TWIG_NAMES.has(n):
+			files.append({"kind": "image", "name": "graveto_%s.png" % TWIG_NAMES[n][0],
+				"photo": "graveto_%02d" % n, "caption": "Pego na %s." % TWIG_NAMES[n][1]})
+	return files
+
+
+## Um canto livre do desktop para um ícone: fora da janela, longe dos outros ícones e da dica.
+## Sem lugar livre, fica atrás da janela (só espiando), em alturas diferentes.
+func _free_desktop_spot(fallback_index: int) -> Vector2:
+	var outer := win.outer_rect().grow(4.0)
+	var note := Rect2(note_pos, note_size + Vector2(0, MiniWindow.TITLE_H)) if note_text != "" else Rect2()
+	for x in [8.0, 600.0]:
+		for y in [288.0, 240.0, 192.0, 144.0, 96.0, 48.0, 8.0]:
+			var r := Rect2(x, y, Tuning.ICON_SIZE, Tuning.ICON_SIZE + 12.0)  # + o nome embaixo
+			if r.intersects(outer) or r.intersects(note):
+				continue
+			var free := true
+			for ic in icons:
+				if ic.rect().grow(8.0).intersects(r):
+					free = false
+			if free:
+				return Vector2(x, y)
+	# sem canto livre: a primeira casa livre da grade (pode ficar atrás da janela, espiando)
+	for i in 40:
+		if not _slot_taken(desktop_slot(i)):
+			return desktop_slot(i)
+	return Vector2(8, 288 - 56 * fallback_index)
+
+
+## As pastas que existem em todas as fases: "gravetos" (a coleção), "fotos" e "trabalho".
+## São só do desktop (nunca viram chão). Se a fase já tem uma pasta com o mesmo nome (como os
+## degraus da fase 9), ela é usada no lugar e só ganha o conteúdo.
+func _add_desktop_folders() -> void:
+	Progress.load_once()
+	var defs := [
+		["gravetos", _twig_files(), twig_folder_pos],
+		["fotos", PHOTOS_FILES, desktop_folder_pos.get("fotos", Vector2.ZERO)],
+		["trabalho", WORK_FILES, desktop_folder_pos.get("trabalho", Vector2.ZERO)],
+		["créditos", CREDIT_FILES, desktop_folder_pos.get("créditos", Vector2.ZERO)],
+	]
+	for k in defs.size():
+		var label: String = defs[k][0]
+		var existing: DeskIcon = null
+		for ic in icons:
+			if ic.label == label:
+				existing = ic
+		var ic := existing
+		if ic == null:
+			var pos: Vector2 = defs[k][2]
+			if pos == Vector2.ZERO:
+				pos = _free_desktop_spot(k)
+			ic = _add_icon("folder", pos, true, label)
+			ic.desktop_only = true
+			ic.solid = false
+		ic.is_container = true
+		ic.contents = defs[k][1]
+		if label == "gravetos":
+			twig_folder = ic
+
+
+## Pegou o graveto desta fase: entra na coleção (e na pasta, já aberta ou não).
+func _collect_twig() -> void:
+	var n := _level_number()
+	if n == 0 or not Progress.add(n):
+		return
+	twig_folder.contents = _twig_files()
+	var fw: FolderWindow = _folder_windows.get(twig_folder)
+	if fw != null:
+		fw.setup_files("gravetos", twig_folder.contents)
+
+
+# --- Os .exe das fases -------------------------------------------------------------------
+
+## Casa n da grade do desktop (colunas de 5, de cima para baixo, da esquerda para a direita).
+func desktop_slot(i: int) -> Vector2:
+	return Vector2(16 + (i / 5) * 80, 16 + (i % 5) * 64)
+
+
+## Um .exe por fase liberada (e o dos créditos depois da 12), nas primeiras casas livres.
+func _add_exe_icons() -> void:
+	var entries: Array = []
+	for n in EXES:
+		if Progress.unlocked(n):
+			entries.append([EXES[n], "res://scenes/level_%02d.tscn" % n])
+	if Progress.beaten.has(12):
+		entries.append(["creditos.exe", "res://scenes/creditos.tscn"])
+	var slot := 0
+	for e in entries:
+		var pos := desktop_slot(slot)
+		while slot < 40 and _slot_taken(pos):
+			slot += 1
+			pos = desktop_slot(slot)
+		slot += 1
+		var ic := _add_icon("app", pos, true, e[0])
+		ic.launch = e[1]
+		ic.hide_outside = false
+		ic.desktop_only = true
+		ic.solid = false
+		ic.shown = is_hub
+		exe_icons.append(ic)
+
+
+func _slot_taken(pos: Vector2) -> bool:
+	var r := Rect2(pos, Vector2(Tuning.ICON_SIZE, Tuning.ICON_SIZE + 12.0))
+	for ic in icons:
+		if ic.rect().grow(6.0).intersects(r):
+			return true
+	return false

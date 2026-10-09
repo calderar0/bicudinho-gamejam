@@ -14,6 +14,7 @@ const L := 1
 const R := 2
 const T := 4
 const B := 8
+const MOVE := 16   # arrastando pela barra de título (move a janela inteira)
 
 # botões da barra de título (linha em art/ui/window_buttons.png), da direita para a esquerda
 enum { BTN_CLOSE, BTN_MAXIMIZE, BTN_RESTORE, BTN_MINIMIZE }
@@ -42,6 +43,8 @@ var target := Rect2()    # interior desejado (o atual persegue com velocidade li
 var min_size := Vector2.ZERO
 var max_size := Vector2.ZERO
 var drag_sides := 0      # 0 = não está redimensionando
+## "(Não respondendo)": barra de título esbranquiçada, sem redimensionar e botões mortos.
+var frozen := false
 
 var _drag_start_mouse := Vector2.ZERO
 var _drag_start_rect := Rect2()
@@ -56,6 +59,8 @@ var _crack_frames: Array[Texture2D] = []
 const FEATHER_PATH := "res://art/hud_feather.png"
 const FEATHER_LOST_PATH := "res://art/hud_feather_lost.png"
 var lives := Tuning.LIVES
+## Nome da fase, escrito na barra de título antes das penas.
+var title_text := ""
 var _feather_tex: Texture2D = null
 var _feather_lost_tex: Texture2D = null
 
@@ -136,6 +141,8 @@ func button_rect(index: int) -> Rect2:
 
 ## Botão (BTN_*) sob o ponto p, ou -1.
 func button_at(p: Vector2) -> int:
+	if frozen:
+		return -1
 	for i in BUTTONS.size():
 		if button_rect(i).has_point(p):
 			return BUTTONS[i]
@@ -169,7 +176,7 @@ func release_button(p: Vector2) -> void:
 
 ## Lados (flags) da zona de arrasto sob o ponto p, ou 0 se não há.
 func side_at(p: Vector2) -> int:
-	if not is_resizable() or button_at(p) != -1:
+	if frozen or not is_resizable() or button_at(p) != -1:
 		return 0
 	var o := outer_rect()
 	if not o.grow(3.0).has_point(p):
@@ -206,6 +213,14 @@ func side_at(p: Vector2) -> int:
 	return s
 
 
+## O ponto está na barra de título (fora dos botões)? Dá para arrastar a janela por ali.
+func title_at(p: Vector2) -> bool:
+	if frozen or button_at(p) != -1:
+		return false
+	var o := outer_rect()
+	return Rect2(o.position, Vector2(o.size.x, Tuning.TITLEBAR_H)).has_point(p)
+
+
 func begin_resize(sides: int, mouse: Vector2) -> void:
 	drag_sides = sides
 	_drag_start_mouse = mouse
@@ -219,6 +234,13 @@ func update_resize(mouse: Vector2) -> void:
 	var d := mouse - _drag_start_mouse
 	var r := _drag_start_rect
 	var s := Tuning.SNAP
+	if drag_sides == MOVE:
+		# mover: o mesmo tamanho, em outro lugar (dentro da tela)
+		var nl := clampf(snappedf(r.position.x + d.x, s), 16.0, Tuning.SCREEN_W - 16.0 - r.size.x)
+		var nt := clampf(snappedf(r.position.y + d.y, s), 32.0,
+			Tuning.SCREEN_H - Tuning.TASKBAR_H - Tuning.GLASS_THICKNESS - r.size.y)
+		target = Rect2(Vector2(nl, nt), r.size)
+		return
 	var l := r.position.x
 	var t := r.position.y
 	var rr := r.end.x
@@ -322,7 +344,7 @@ func _draw() -> void:
 	draw_style_box(_body_style, Rect2(o.position.x, rect.position.y, o.size.x, o.end.y - rect.position.y))
 	# barra de título: painel azul com borda rosa
 	draw_style_box(_title_style, Rect2(o.position, Vector2(o.size.x, tb_h)))
-	_draw_lives(o.position + Vector2(6, (tb_h - 16.0) / 2.0))
+	_draw_title(o, tb_h)
 
 	# botões: coluna = estado, linha = tipo
 	for i in BUTTONS.size():
@@ -335,8 +357,13 @@ func _draw() -> void:
 		var src := Rect2(state * BTN_SIZE, btn * BTN_SIZE, BTN_SIZE, BTN_SIZE)
 		draw_texture_rect_region(TEX_BUTTONS, button_rect(i), src)
 
+	if frozen:
+		# travada: um véu branco na barra (as penas continuam visíveis) e o aviso
+		draw_rect(Rect2(o.position, Vector2(o.size.x, tb_h)), Color(1, 1, 1, 0.55))
+		_draw_title(o, tb_h)
+
 	# cantos de baixo: dica de que dá para redimensionar
-	if is_resizable():
+	if is_resizable() and not frozen:
 		var c := Color(1, 1, 1, 0.85)
 		draw_rect(Rect2(Vector2(o.position.x, o.end.y - 3), Vector2(3, 3)), c)
 		draw_rect(Rect2(o.end - Vector2(3, 3), Vector2(3, 3)), c)
@@ -382,7 +409,7 @@ func _draw_lives(origin: Vector2) -> void:
 			elif lost != null:
 				draw_texture_rect(lost, Rect2(at, Vector2(16, 16)), false)
 			else:
-				draw_texture_rect(full, Rect2(at, Vector2(16, 16)), false, Color(0, 0, 0, 0.35))
+				draw_texture_rect(full, Rect2(at, Vector2(16, 16)), false, Color(1, 1, 1, 0.25))  # perdida: só um fantasma
 			continue
 		# placeholder: uma pena branca inclinada (cheia) ou só o contorno (perdida)
 		var vane := PackedVector2Array([Vector2(3, 14), Vector2(4, 9), Vector2(8, 4), Vector2(14, 1),
@@ -396,3 +423,17 @@ func _draw_lives(origin: Vector2) -> void:
 		vane.append(vane[0])
 		draw_polyline(vane, Color("1a1a2e") if has else Color(1, 1, 1, 0.35), 1.0)
 		draw_line(at + Vector2(1, 15), at + Vector2(13, 3), Color("a0522d") if has else Color(1, 1, 1, 0.35), 1.0)
+
+
+## Barra de título: o nome da fase (e "(Não respondendo)" se travada) e, logo depois, as penas.
+func _draw_title(o: Rect2, tb_h: float) -> void:
+	var font := ThemeDB.fallback_font
+	var t := title_text
+	if frozen:
+		t += " (Não respondendo)"
+	var x := o.position.x + 8.0
+	if t != "":
+		draw_string(font, Vector2(x, o.position.y + 16.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 8,
+			Color("2b2b3a") if frozen else Color("f2f1ed"))
+		x += font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x + 8.0
+	_draw_lives(Vector2(x, o.position.y + (tb_h - 16.0) / 2.0))

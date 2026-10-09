@@ -24,6 +24,11 @@ var jump_buffer := 0.0
 var anim_time := 0.0
 var dead := false
 var lives := Tuning.LIVES     # penas: cada batida no vidro tira uma
+## Anda sozinho para a frente e vira ao bater numa parede; o teclado não faz nada (fase da
+## bicudinha e créditos: o jogador só usa o mouse).
+var auto_walk := false
+## A base da janela subindo rápido lança o bicudinho para cima (trampolim).
+var launch_enabled := false
 var happy := false            # chegou ao objetivo: fica parado e feliz
 var frozen := false           # chegou ao objetivo: para (feliz ou não)
 var _step_phase := 0.0
@@ -86,6 +91,8 @@ func _physics_process(delta: float) -> void:
 func _normal(delta: float) -> void:
 	# entrada horizontal
 	var dir := Input.get_axis("move_left", "move_right")
+	if auto_walk:
+		dir = float(facing)
 	if dir != 0.0:
 		facing = 1 if dir > 0.0 else -1
 
@@ -102,7 +109,7 @@ func _normal(delta: float) -> void:
 
 	# buffer de pulo
 	jump_buffer = maxf(jump_buffer - delta, 0.0)
-	var pressed := Input.is_action_just_pressed("jump")
+	var pressed := Input.is_action_just_pressed("jump") and not auto_walk
 	if pressed:
 		jump_buffer = Tuning.JUMP_BUFFER
 
@@ -132,7 +139,7 @@ func _normal(delta: float) -> void:
 
 	# gravidade, ou planar (segurar a ação de planar enquanto cai)
 	gliding = not on_floor and velocity.y > 0.0 and _glide_left > 0.0 \
-			and Input.is_action_pressed(Tuning.GLIDE_ACTION)
+			and Input.is_action_pressed(Tuning.GLIDE_ACTION) and not auto_walk
 	if gliding:
 		_glide_left -= delta
 		if velocity.y > Tuning.GLIDE_FALL_SPEED:
@@ -143,6 +150,8 @@ func _normal(delta: float) -> void:
 		velocity.y = minf(velocity.y + Tuning.GRAVITY * delta, Tuning.MAX_FALL_SPEED)
 
 	move_and_slide()
+	if auto_walk and is_on_wall() and get_wall_normal().x * facing < 0.0:
+		facing = -facing  # andando sozinho: bateu na parede (ou no vidro), dá meia-volta
 	# bateu de lado numa quina de terra no ar, empurrando contra ela: sobe nela
 	if not is_on_floor() and is_on_wall() and dir * get_wall_normal().x < 0.0:
 		_try_ledge_assist(dir)
@@ -354,6 +363,9 @@ func enforce_inside(interior: Rect2) -> void:
 	collision_mask = saved_mask
 	if blocked:
 		die("crush")
+	elif launch_enabled and state == State.NORMAL and dy <= -Tuning.LAUNCH_MIN_PUSH:
+		velocity.y = minf(velocity.y, -Tuning.LAUNCH_SPEED)  # a base subiu rápido: trampolim
+		Audio.play("sfx_jump", 0.05)
 
 
 ## Chegou ao objetivo (a bicudinha): para tudo e fica feliz. Chamado pela fase.

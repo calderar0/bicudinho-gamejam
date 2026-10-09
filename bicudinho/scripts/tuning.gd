@@ -53,6 +53,12 @@ const GLASS_RULE := GlassRule.STUN
 ## Vidas (penas) por fase. Cada batida no vidro na disparada (borda da janela ou vidro
 ## da fase) tira uma; a última mata. Morrer reinicia a fase com todas de volta.
 const LIVES := 3
+## Trampolim (fases com bottom_launch): se a base da janela empurra o bicudinho para cima
+## pelo menos isto num quadro (px), ele é lançado com esta velocidade (px/s, ~10 tiles).
+const LAUNCH_MIN_PUSH := 4.0
+const LAUNCH_SPEED := 560.0
+## A saída que foge (fases com exit_spots): foge quando o bicudinho chega a esta distância (px).
+const EXIT_FLEE_DIST := 40.0
 const GLASS_BREAK_FPS := 12.0   # animação do vidro da fase se estilhaçando (glass_02 a 05)
 
 # --- Bicudinho: arte ----------------------------------------------------------

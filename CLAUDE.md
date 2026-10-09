@@ -26,6 +26,8 @@ Jogo de plataforma 2D em pixel art para a GameRex 2026 (game jam, ~23h). Leia `P
 4. **Ícones:** arrastáveis com o mouse (grade de 16 px), 1 tile cada. Só colidem e aparecem dentro da janela. Não podem ser largados sobre o bicudinho nem dentro de parede. Tipos: fixo, arrastável, some se cortado, brejo (saída da fase) e os que abrem mini-janelas.
 5. **Mini-janelas:** componente único (moldura, barra de título, botão de fechar, arrastável, espaço para conteúdo). Ficam acima de tudo. O topo (barra de título) é uma plataforma de mão única: o bicudinho pula por baixo e pousa em cima. Ela segue a regra de ouro (só a parte dentro da janela do jogo colide), desliga enquanto a mini-janela é arrastada e não pode ser largada em cima do bicudinho (a mini-janela volta). Conteúdo vem do nó de dados da fase (`notepad_text`, `viewer_image`). A fase 1 abre o visualizador sozinho com o tutorial.
 6. **Morte** (rio, lixo, queda ou esmagado): congela, anima e reinicia a fase em menos de 1,5 s.
+7. **Penas e objetivo:** 3 penas por fase; cada batida no vidro na disparada tira uma. Toda fase termina num graveto, menos a fase da bicudinha (12) e os créditos.
+8. **Mecânicas por fase** (campos da `LevelBase`): ícone `"behind"` escondido atrás da janela (5), dica com texto cortado fora da tela (6), lixo `^` no mapa (7), `exit_spots` saída que foge e `bottom_launch` trampolim (8), `window_frozen` "Não respondendo" com anúncios `AdWindow` (9), `ProgressBridge` barra de cópia (10), `DarkOverlay` mouse como lanterna (11), `auto_walk` só o mouse (12 e créditos).
 
 ## Dados de cada fase (nó na cena)
 

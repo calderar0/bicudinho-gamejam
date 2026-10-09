@@ -151,8 +151,11 @@ func _draw() -> void:
 	draw_texture_rect_region(TEX_BUTTONS, Rect2(size.x - 6.0 - BTN, 4, BTN, BTN),
 		Rect2(state * BTN, 0, BTN, BTN))
 	draw_style_box(_frame_style, Rect2(0, TITLE_H, size.x, size.y))
-	draw_multiline_string(ThemeDB.fallback_font, Vector2(PAD, TITLE_H + PAD + 8), text,
-		HORIZONTAL_ALIGNMENT_LEFT, size.x - PAD * 2.0, 8, -1, Color("2b2b3a"))
+	# o texto que não cabe fica cortado (para ler tudo, a janela precisa estar inteira na tela)
+	var font := ThemeDB.fallback_font
+	var max_lines := maxi(1, int((size.y - PAD * 2.0) / font.get_height(8)))
+	draw_multiline_string(font, Vector2(PAD, TITLE_H + PAD + 8), text,
+		HORIZONTAL_ALIGNMENT_LEFT, size.x - PAD * 2.0, 8, max_lines, Color("2b2b3a"))
 
 
 ## Espessura da plataforma: a linha do topo mais a aderência que desce dela.

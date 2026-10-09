@@ -8,7 +8,7 @@ extends MiniWindow
 
 signal file_opened(file: Dictionary)
 
-const CELL := Vector2(60, 54)
+const CELL := Vector2(64, 64)   # ícone + nome em até 2 linhas
 const ICON := 32.0
 const MAX_COLS := 4
 const MIN_WIDTH := 130.0
@@ -108,5 +108,7 @@ func _draw() -> void:
 			draw_texture_rect(tex, Rect2(at, Vector2(ICON, ICON)), false)
 		else:
 			draw_rect(Rect2(at, Vector2(ICON, ICON)), Color("8a8d99"))
-		draw_string(font, r.position + Vector2(0, 46), str(f.get("name", "arquivo")),
-			HORIZONTAL_ALIGNMENT_CENTER, CELL.x, 8, Color.WHITE if selected else LABEL_COLOR)
+		# nome em até 2 linhas, quebrando no meio da palavra se precisar (nomes_com_underline)
+		draw_multiline_string(font, r.position + Vector2(2, 45), str(f.get("name", "arquivo")),
+			HORIZONTAL_ALIGNMENT_CENTER, CELL.x - 4.0, 8, 2, Color.WHITE if selected else LABEL_COLOR,
+			TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND)

@@ -5,6 +5,7 @@ extends Node2D
 ##
 ## Legenda do mapa:  #  chão    =  plataforma fina    ~  rio (perigo)    .  vazio
 ##                   |  vidro (GlassPane, 1x2 tiles: marque só a célula de cima)
+##                   ^  lixo (perigo): um monte de lixo no chão
 
 const GROUND_COLOR := Color("6b4c33")
 const GRASS_COLOR := Color("5aad4e")
@@ -59,6 +60,9 @@ func setup(rows: PackedStringArray) -> void:
 					hazards.append({"rect": r, "kind": "river"})
 				"|":
 					glass_spots.append(r.position)
+				"^":
+					cells.append({"ch": ch, "rect": r, "shape": null, "top_open": true})
+					hazards.append({"rect": r.grow_side(SIDE_TOP, -6.0), "kind": "trash"})
 
 
 ## Chamado toda vez que a janela muda de tamanho.
@@ -111,7 +115,25 @@ func _draw() -> void:
 					draw_rect(Rect2(r.position, Vector2(16, 3)).intersection(interior), GRASS_COLOR)
 			"=":
 				draw_rect(Rect2(r.position, Vector2(16, 5)).intersection(interior), PLATFORM_COLOR)
+			"^":
+				_draw_trash(r)
 			"~":
 				draw_rect(visible_part, WATER_COLOR)
 				var offset := (wave + int(r.position.x / 16.0)) % 4
 				draw_rect(Rect2(r.position + Vector2(offset * 4, 3), Vector2(4, 1)).intersection(interior), WAVE_COLOR)
+
+
+## Monte de lixo: lata, garrafa e saco, recortado pela janela.
+func _draw_trash(r: Rect2) -> void:
+	var parts := [
+		[Rect2(1, 9, 6, 7), Color("8a8f98")],    # lata
+		[Rect2(2, 10, 4, 1), Color("c9ccd2")],
+		[Rect2(7, 4, 3, 12), Color("5fa86b")],   # garrafa
+		[Rect2(8, 2, 1, 2), Color("5fa86b")],
+		[Rect2(10, 8, 6, 8), Color("3b3b44")],   # saco
+		[Rect2(12, 6, 2, 2), Color("3b3b44")],
+	]
+	for p in parts:
+		var pr := Rect2(r.position + (p[0] as Rect2).position, (p[0] as Rect2).size).intersection(interior)
+		if pr.has_area():
+			draw_rect(pr, p[1])

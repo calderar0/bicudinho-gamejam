@@ -1,7 +1,8 @@
 class_name StartMenu
 extends Node2D
 ## Botão Iniciar (losango) na barra de tarefas e o menu que ele abre:
-## Shutdown (desliga o jogo), Sound (liga/desliga o som) e Restart (reinicia a fase).
+## Shutdown (desliga o jogo), Sound (liga/desliga o som), Music (só a música) e Restart
+## (reinicia a fase).
 ## Fica acima de tudo e consome os cliques que pegar.
 
 const TEX_START := preload("res://art/ui/start_button.png")
@@ -9,8 +10,11 @@ const TEX_ICONS := preload("res://art/ui/startmenu_icons.png")   # desligar, alt
 const TEX_PANEL := preload("res://art/ui/window_border.png")
 const TEX_LIST := preload("res://art/ui/minwin_frame.png")
 
-enum { ITEM_SHUTDOWN, ITEM_SOUND, ITEM_RESTART }
-const MENU_SIZE := Vector2(132, 78)
+enum { ITEM_SHUTDOWN, ITEM_SOUND, ITEM_MUSIC, ITEM_RESTART }
+const ITEM_COUNT := 4
+## Ícone de cada item em startmenu_icons.png (-1 = desenhado por código: a nota da música).
+const ITEM_ICON := [0, 1, -1, 2]
+const MENU_SIZE := Vector2(132, 100)
 const ITEM_H := 22.0
 const TEXT_COLOR := Color("f2f1ed")
 const HOVER_COLOR := Color("65dcd6")   # ciano dos botões em hover
@@ -54,7 +58,7 @@ func _item_rect(i: int) -> Rect2:
 func _item_at(p: Vector2) -> int:
 	if not is_open:
 		return -1
-	for i in 3:
+	for i in ITEM_COUNT:
 		if _item_rect(i).has_point(p):
 			return i
 	return -1
@@ -114,6 +118,9 @@ func _activate(item: int) -> void:
 		ITEM_SOUND:
 			Audio.toggle_mute()
 			queue_redraw()
+		ITEM_MUSIC:
+			Audio.set_music_on(not Audio.is_music_on())
+			queue_redraw()
 		ITEM_RESTART:
 			get_tree().reload_current_scene()
 
@@ -165,11 +172,15 @@ func _draw() -> void:
 		draw_rect(Rect2(x + 9, y + 1, 28, 3), Color("c0bfbd"))
 
 	# itens: ícone 16x16 + texto
-	var labels := ["Shutdown", "Sound on" if Audio.is_muted() else "Sound off", "Restart"]
-	for i in 3:
+	var labels := ["Shutdown", "Sound on" if Audio.is_muted() else "Sound off",
+		"Music on" if not Audio.is_music_on() else "Music off", "Restart"]
+	for i in ITEM_COUNT:
 		var r := _item_rect(i)
-		draw_texture_rect_region(TEX_ICONS, Rect2(r.position + Vector2(1, 1), Vector2(16, 16)),
-			Rect2(i * 16, 0, 16, 16))
+		if ITEM_ICON[i] >= 0:
+			draw_texture_rect_region(TEX_ICONS, Rect2(r.position + Vector2(1, 1), Vector2(16, 16)),
+				Rect2(ITEM_ICON[i] * 16, 0, 16, 16))
+		else:
+			_draw_music_icon(r.position + Vector2(1, 1), Audio.is_music_on())
 		if i == ITEM_SOUND and Audio.is_muted():
 			# X vermelho por cima das ondas do alto-falante
 			var c := r.position + Vector2(10, 4)
@@ -179,3 +190,19 @@ func _draw() -> void:
 		var col := HOVER_COLOR if i == _hover else TEXT_COLOR
 		draw_string(ThemeDB.fallback_font, r.position + Vector2(21, 13), labels[i],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, col)
+
+
+## Ícone da música no estilo dos outros (quadrado colorido 16x16): uma nota branca, com um
+## X vermelho quando a música está desligada.
+func _draw_music_icon(at: Vector2, on: bool) -> void:
+	draw_rect(Rect2(at, Vector2(16, 16)), Color("2f3a8f"))
+	draw_rect(Rect2(at + Vector2(1, 1), Vector2(14, 14)), Color("edbc55"))
+	var o := at + Vector2(4, 3)
+	draw_rect(Rect2(o + Vector2(5, 0), Vector2(1, 8)), Color.WHITE)    # haste
+	draw_rect(Rect2(o + Vector2(6, 0), Vector2(3, 2)), Color.WHITE)    # bandeirinha
+	draw_rect(Rect2(o + Vector2(2, 7), Vector2(4, 3)), Color.WHITE)    # cabeça da nota
+	if not on:
+		var c := at + Vector2(10, 4)
+		for k in 5:
+			draw_rect(Rect2(c + Vector2(k, k), Vector2(1, 1)), Color("d85525"))
+			draw_rect(Rect2(c + Vector2(4 - k, k), Vector2(1, 1)), Color("d85525"))

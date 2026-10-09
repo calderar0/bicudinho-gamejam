@@ -38,8 +38,8 @@ func _setup_level() -> void:
 	note_text = "Os ícones do desktop viram chão dentro da janela.\nArraste uma pasta!"
 	note_pos = Vector2(8, 216)
 	note_size = Vector2(136, 60)
-	hint = "Mouse: arrastar ícones (duplo clique abre) | Espaço no ar: preparar | ↑ caindo: planar | R: reiniciar"
-	# next_level: ainda não existe a fase 3 (a fase 2 recomeça ao vencer)
+	level_name = "Fase 2: Arrasta"
+	next_level = "res://scenes/level_03.tscn"
 
 
 func _paint_map(g: Array) -> void:

@@ -60,8 +60,24 @@ func stop_music() -> void:
 
 ## Volta a música do começo, se ela já tinha começado (depois do primeiro clique).
 func resume_music() -> void:
-	if _music_started and _music.stream != null and not _music.playing:
+	if Progress.music_on and _music_started and _music.stream != null and not _music.playing:
 		_music.play()
+
+
+## Liga ou desliga só a música (os efeitos continuam). A escolha fica salva.
+func set_music_on(on: bool) -> void:
+	Progress.load_once()
+	Progress.music_on = on
+	Progress.save()
+	if on:
+		resume_music()
+	else:
+		_music.stop()
+
+
+func is_music_on() -> bool:
+	Progress.load_once()
+	return Progress.music_on
 
 
 func toggle_mute() -> void:
@@ -79,4 +95,5 @@ func _input(event: InputEvent) -> void:
 		_music_started = true
 		if ResourceLoader.exists(MUSIC):
 			_music.stream = load(MUSIC)
-			_music.play()
+			if is_music_on():
+				_music.play()

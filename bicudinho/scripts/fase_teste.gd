@@ -22,7 +22,7 @@ func _setup_level() -> void:
 	note_pos = Vector2(400, 60)
 	note_size = Vector2(200, 84)
 	note_open_at_start = false  # abre com duplo clique no ícone do bloco de notas
-	hint = "Espaço no ar: preparar | setas: mirar | segurar ↑ caindo: planar | R: reiniciar | arraste os ícones"
+	level_name = "Teste"
 
 
 func _paint_map(g: Array) -> void:
