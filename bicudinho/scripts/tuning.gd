@@ -78,6 +78,22 @@ const HAPPY_FPS := 4.0           # feliz ao chegar no objetivo: 2 quadros repeti
 const FEMALE_IDLE_FPS := 3.0     # a bicudinha parada: 2 quadros repetindo
 const FEMALE_HAPPY_FPS := 4.0    # a bicudinha feliz (com coração): 2 quadros repetindo
 
+# --- Efeitos (fx.gd e bicudinho.gd) -------------------------------------------
+const FX_JUMP_STRETCH := Vector2(0.78, 1.28)   # esticado ao pular (x, y)
+const FX_LAND_SQUASH_MAX := 0.35               # quanto achata ao pousar de uma queda forte
+const FX_LAND_MIN_SPEED := 140.0               # abaixo desta velocidade de queda, nada acontece
+const FX_SQUASH_RECOVER := 14.0                # velocidade com que volta ao normal
+const FX_GHOST_INTERVAL := 0.03                # um fantasma da disparada a cada tanto (s)
+const FX_GHOST_LIFE := 0.22                    # quanto tempo cada fantasma dura (s)
+const FX_GHOST_ALPHA := 0.6
+const FX_GHOST_COLOR := Color(0.75, 0.95, 1.0)
+const FX_BLINK_TIME := 0.9                     # pisca ao perder uma pena (s)
+const FX_BLINK_RATE := 0.06
+const FX_SHAKE_GLASS := Vector2(4.0, 0.22)     # tremor ao bater no vidro: amplitude (px), tempo (s)
+const FX_SHAKE_DEATH := Vector2(6.0, 0.35)     # tremor ao morrer
+const FX_HITSTOP := 0.06                       # pausa de impacto ao bater no vidro (s, 0 desliga)
+const FX_FLASH_ALPHA := 0.45                   # flash branco ao perder uma pena (0 desliga)
+
 # --- Sons ---------------------------------------------------------------------
 ## Volume dos passos em dB (0 = original, -6 = metade, mais negativo = mais baixo).
 const STEP_VOLUME_DB := -14.0

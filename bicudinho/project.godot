@@ -19,6 +19,8 @@ config/icon="res://icon.svg"
 
 Tuning="*uid://dju4vqjqf1imx"
 Audio="*res://scripts/audio.gd"
+Fx="*uid://evwwwnk5n2mt"
+ScreenMode="*uid://d0y46yql7fx0j"
 
 [display]
 
@@ -27,7 +29,6 @@ window/size/viewport_height=360
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
 window/stretch/scale_mode="integer"
 
 [input]

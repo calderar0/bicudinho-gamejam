@@ -5,6 +5,7 @@ extends CharacterBody2D
 ## Passo 2: perigos do mapa, ser empurrado pela janela e ser esmagado.
 ## Passo 3: preparar voo (pausa com mira) e disparada; o vidro atordoa na disparada.
 ## Extra: planar segurando a ação de Tuning.GLIDE_ACTION enquanto cai.
+## Efeitos (fx.gd): esmagar e esticar, poeira, fantasma da disparada, piscar ao perder pena.
 ## Usa a arte de res://art/ se existir; sem ela, desenha um placeholder.
 ##
 ## Arte: quadros em arquivos separados, <nome>_01.png, <nome>_02.png...
@@ -51,11 +52,23 @@ var _min_y := 0.0
 
 var _frames_cache: Dictionary = {}
 
+# efeitos visuais
+var _squash := Vector2.ONE      # esmagar e esticar (escala do desenho, a base fica nos pés)
+var _vy_before := 0.0           # velocidade vertical antes de mover (para saber a força do pouso)
+var _fx_was_floor := false
+var _blink := 0.0               # tempo que ainda pisca depois de perder uma pena
+var _ghost_timer := 0.0
+var _ghosts: Array = []         # fantasmas da disparada: {pos, tex, pivot, angle, facing, age}
+var _cur_tex: Texture2D = null  # o quadro desenhado agora (os fantasmas copiam dele)
+var _cur_pivot := Vector2.ZERO
+var _cur_angle := 0.0
+
 
 func _ready() -> void:
 	collision_layer = 0
 	collision_mask = 3  # camada 1 (mundo) + camada 2 (vidro)
 	_glide_left = Tuning.GLIDE_TIME
+	Fx.clear()  # recomeçar a fase não herda partículas, tremor nem pausa de impacto
 
 
 func box_rect() -> Rect2:
@@ -71,6 +84,7 @@ func _physics_process(delta: float) -> void:
 	anim_time += delta
 	if frozen:
 		return  # chegou e parou (só a animação roda)
+	_vy_before = velocity.y
 	match state:
 		State.NORMAL:
 			_normal(delta)
@@ -82,6 +96,7 @@ func _physics_process(delta: float) -> void:
 			_stun(delta)
 	if not dead:
 		_check_hazard()
+		_landing_fx()
 	if Tuning.DEBUG_MEASURE:
 		_measure()
 
@@ -119,6 +134,8 @@ func _normal(delta: float) -> void:
 		jump_buffer = 0.0
 		coyote = 0.0
 		Audio.play("sfx_jump", 0.05)
+		_squash = Tuning.FX_JUMP_STRETCH
+		Fx.dust_jump(global_position)
 	elif pressed and not on_floor and has_dash and _air_time > Tuning.PREPARE_MIN_AIR_TIME \
 			and not test_move(global_transform, Vector2(0, Tuning.PREPARE_GROUND_CLEARANCE)):
 		# segundo toque no ar (longe do chão): preparar o voo
@@ -206,10 +223,17 @@ func _start_dash(aim: Vector2) -> void:
 	if aim.x != 0.0:
 		facing = 1 if aim.x > 0.0 else -1
 	Audio.play("sfx_dash", 0.05)
+	_squash = Vector2.ONE
+	_ghost_timer = 0.0  # o primeiro fantasma já nasce neste quadro
+	Fx.dash_puff(global_position + Vector2(0, -7), aim)
 
 
 func _dash(delta: float) -> void:
 	_state_time += delta
+	_ghost_timer -= delta
+	if _ghost_timer <= 0.0:
+		_ghost_timer = Tuning.FX_GHOST_INTERVAL
+		_spawn_ghost()
 	var remaining := Tuning.DASH_DISTANCE - _dash_travelled
 	var step := _dash_dir * Tuning.DASH_SPEED * delta
 	if step.length() > remaining:
@@ -262,6 +286,8 @@ func _hit_glass(pos: Vector2, hit: Node) -> void:
 		glass_hit.emit(pos)
 	lives -= 1
 	lives_changed.emit(lives)
+	_blink = Tuning.FX_BLINK_TIME
+	Fx.glass_hit(pos, global_position + Vector2(0, -7), _dash_dir)
 	if lives <= 0:
 		die("glass")
 		return
@@ -295,6 +321,44 @@ func _stun(delta: float) -> void:
 func _clear_input_memory() -> void:
 	jump_buffer = 0.0
 	coyote = 0.0
+
+
+# --- Efeitos visuais -------------------------------------------------------------
+
+## Acabou de pousar depois de cair rápido: achata e levanta poeira.
+func _landing_fx() -> void:
+	var on_floor := is_on_floor()
+	if on_floor and not _fx_was_floor and state != State.DASH \
+			and _vy_before >= Tuning.FX_LAND_MIN_SPEED:
+		var k := clampf(_vy_before / Tuning.MAX_FALL_SPEED, 0.0, 1.0)
+		var s := Tuning.FX_LAND_SQUASH_MAX * k
+		_squash = Vector2(1.0 + s, 1.0 - s)
+		Fx.dust_land(global_position, k)
+	_fx_was_floor = on_floor
+
+
+## Deixa uma cópia esmaecida do quadro atual para trás (o rastro da disparada).
+func _spawn_ghost() -> void:
+	if _cur_tex == null:
+		return
+	_ghosts.append({
+		"pos": global_position, "tex": _cur_tex, "pivot": _cur_pivot,
+		"angle": _cur_angle, "facing": facing, "age": 0.0})
+	if _ghosts.size() > 16:
+		_ghosts.remove_at(0)
+
+
+func _draw_ghosts() -> void:
+	for g: Dictionary in _ghosts:
+		var tex: Texture2D = g["tex"]
+		var c := Tuning.FX_GHOST_COLOR
+		c.a = Tuning.FX_GHOST_ALPHA * (1.0 - float(g["age"]) / Tuning.FX_GHOST_LIFE)
+		var at: Vector2 = (g["pos"] as Vector2) - global_position
+		var pivot: Vector2 = g["pivot"]
+		draw_set_transform(at + pivot + Vector2(0, Tuning.SPRITE_Y_ADJUST), g["angle"],
+			Vector2(g["facing"], 1))
+		draw_texture(tex, Vector2(-tex.get_width() / 2.0, -tex.get_height()) - pivot, c)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 # --- Medição, perigos, empurrão da janela e morte -----------------------------
@@ -366,6 +430,7 @@ func enforce_inside(interior: Rect2) -> void:
 	elif launch_enabled and state == State.NORMAL and dy <= -Tuning.LAUNCH_MIN_PUSH:
 		velocity.y = minf(velocity.y, -Tuning.LAUNCH_SPEED)  # a base subiu rápido: trampolim
 		Audio.play("sfx_jump", 0.05)
+		_squash = Tuning.FX_JUMP_STRETCH
 
 
 ## Chegou ao objetivo (a bicudinha): para tudo e fica feliz. Chamado pela fase.
@@ -385,17 +450,29 @@ func die(cause: String) -> void:
 	dead = true
 	velocity = Vector2.ZERO
 	_state_time = 0.0
+	_squash = Vector2.ONE
+	_blink = 0.0
 	Audio.play("sfx_death")
+	Fx.death(global_position)
 	died.emit(cause)
 
 
 # --- Desenho -------------------------------------------------------------------
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_squash = _squash.lerp(Vector2.ONE, minf(1.0, Tuning.FX_SQUASH_RECOVER * delta))
+	_blink = maxf(_blink - delta, 0.0)
+	var blinking := _blink > 0.0 and int(_blink / Tuning.FX_BLINK_RATE) % 2 == 0
+	modulate.a = 0.3 if blinking else 1.0
+	for i in range(_ghosts.size() - 1, -1, -1):
+		_ghosts[i]["age"] += delta
+		if _ghosts[i]["age"] >= Tuning.FX_GHOST_LIFE:
+			_ghosts.remove_at(i)
 	queue_redraw()
 
 
 func _draw() -> void:
+	_draw_ghosts()
 	if not _draw_art():
 		_draw_placeholder()
 	# estrelinhas desenhadas por código só quando a arte do stun não existe
@@ -530,7 +607,11 @@ func _draw_art() -> bool:
 	if state == State.DASH and not dead:
 		pivot = Vector2(0, -8)
 		angle = atan2(_dash_dir.y, absf(_dash_dir.x)) * facing
-	draw_set_transform(pivot + Vector2(0, Tuning.SPRITE_Y_ADJUST), angle, Vector2(facing, 1))
+	_cur_tex = t
+	_cur_pivot = pivot
+	_cur_angle = angle
+	var sq := Vector2.ONE if state == State.DASH else _squash  # esmagar e esticar (base nos pés)
+	draw_set_transform(pivot + Vector2(0, Tuning.SPRITE_Y_ADJUST), angle, Vector2(facing * sq.x, sq.y))
 	draw_texture(t, Vector2(-size.x / 2.0, -size.y) - pivot)  # centro-inferior nos pés
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	return true
@@ -555,7 +636,7 @@ func _draw_placeholder() -> void:
 	var bob := 0.0
 	if state == State.NORMAL and is_on_floor() and absf(velocity.x) > 10.0:
 		bob = -absf(sin(anim_time * 16.0)) * 2.0  # andar em saltinhos
-	draw_set_transform(Vector2(0, bob), 0.0, Vector2(facing, 1))
+	draw_set_transform(Vector2(0, bob), 0.0, Vector2(facing * _squash.x, _squash.y))
 	draw_rect(Rect2(-6, -14, 12, 14), body)               # corpo
 	draw_rect(Rect2(-5, -6, 9, 5), Color("ead9a6"))      # barriga
 	draw_rect(Rect2(2, -12, 2, 2), Color.BLACK)          # olho
