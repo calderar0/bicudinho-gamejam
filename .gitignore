@@ -1,0 +1,7 @@
+# Godot
+.godot/
+*.translation
+
+# Exports
+bicudinho/build/
+bicudinho/.godot/
