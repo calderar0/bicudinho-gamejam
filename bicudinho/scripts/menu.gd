@@ -1,6 +1,6 @@
 extends Node2D
-## Tela de entrada do jogo: o login do "computador" do bicudinho. Fundo com o papel de parede,
-## foto de perfil (art/ui/menu_bg.png, inteira), o usuário "Bicudinho" e o campo de senha.
+## Tela de entrada do jogo: o login do "computador" do Quito. Fundo com o papel de parede,
+## foto de perfil (art/ui/menu_bg.png, inteira), o usuário "Quito" e o campo de senha.
 ## A senha é fixa (PASSWORD, sem diferenciar maiúsculas). Certa: entra no desktop principal.
 ## Errada: o campo treme. "Esqueceu a senha?" mostra uma dica e, no segundo clique, a senha.
 ## O botão do canto de baixo desliga o jogo.
@@ -10,7 +10,7 @@ const AVATAR := preload("res://art/ui/menu_bg.png")
 const TEX_ICONS := preload("res://art/ui/startmenu_icons.png")   # o 1º ícone é o de desligar
 const DESKTOP_SCENE := "res://scenes/desktop.tscn"
 const PASSWORD := "bicudinha"
-const USER := "Bicudinho"
+const USER := "Quito"
 
 const PHOTO := Rect2(256, 64, 128, 128)          # a foto de perfil (64x64 ampliada 2x)
 const FIELD := Rect2(236, 232, 150, 16)          # campo de senha
@@ -161,7 +161,7 @@ func _draw() -> void:
 		_shadow_text(font, "A senha é: " + PASSWORD, Vector2(0, 314), 10, HOVER)
 
 	# rodapé: o nome do jogo e o botão de desligar
-	_shadow_text(font, "Bicudinho  ·  GameRex 2026", Vector2(0, 342), 10, INK)
+	_shadow_text(font, "Quito  ·  GameRex 2026", Vector2(0, 342), 10, INK)
 	# desligar: só o ícone quadrado (o mesmo do menu Iniciar), com contorno ciano no hover
 	draw_texture_rect_region(TEX_ICONS, POWER, Rect2(0, 0, 16, 16))
 	if _hover_power:

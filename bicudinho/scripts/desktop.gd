@@ -14,7 +14,7 @@ func _setup_level() -> void:
 	twig_folder_pos = desktop_slot(0)
 	desktop_folder_pos = {"fotos": desktop_slot(1), "trabalho": desktop_slot(2), "créditos": desktop_slot(3)}
 	note_title = "leia-me.txt"
-	note_text = "Bem-vindo ao Bicudinho!\n\nClique duas vezes num .exe para jogar.\nCada fase vencida libera a próxima, e cada graveto vai para a pasta \"gravetos\"."
+	note_text = "Bem-vindo ao Quito!\n\nClique duas vezes num .exe para jogar.\nCada fase vencida libera a próxima, e cada graveto vai para a pasta \"gravetos\"."
 	note_pos = Vector2(300, 60)
 	note_size = Vector2(220, 100)
 

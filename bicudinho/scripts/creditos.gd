@@ -62,7 +62,7 @@ func _physics_process(delta: float) -> void:
 
 func _draw_names() -> void:
 	var font := ThemeDB.fallback_font
-	_names_layer.draw_string(font, Vector2(win.rect.position.x, 88), "Bicudinho",
+	_names_layer.draw_string(font, Vector2(win.rect.position.x, 88), "Quito",
 		HORIZONTAL_ALIGNMENT_CENTER, win.rect.size.x, 16, Color("2f3a8f"))
 	_names_layer.draw_string(font, Vector2(win.rect.position.x, 104), "feito para a GameRex 2026",
 		HORIZONTAL_ALIGNMENT_CENTER, win.rect.size.x, 8, Color("2f3a8f"))

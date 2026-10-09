@@ -150,7 +150,7 @@ const PHOTOS_FILES := [
 ]
 ## A pasta "créditos": quem fez o jogo e o material de terceiros (veja CREDITS.md).
 const CREDIT_FILES := [
-	{"kind": "text", "name": "equipe.txt", "text": "Bicudinho, feito para a GameRex 2026.\n\nLetícia Akemi Ikemoto\nArte e Game Design\n\nFelipe Calderaro\nProgramação e Game Design\n\nBianca Valenciani\nEfeitos Sonoros e Game Design"},
+	{"kind": "text", "name": "equipe.txt", "text": "Quito, feito para a GameRex 2026.\n\nLetícia Akemi Ikemoto\nArte e Game Design\n\nFelipe Calderaro\nProgramação e Game Design\n\nBianca Valenciani\nEfeitos Sonoros e Game Design"},
 	{"kind": "text", "name": "terceiros.txt", "text": "Arte da interface: DampSquib (Computer Icons Asset Pack).\n\nSons: matthewvakaliuk73627, 47313572 e soundshelfstudio (Pixabay); Tuudurt (CC0); heyheytheree (CC BY 4.0).\n\nMúsica: hmmm101, Pixel Song #10 (CC0).\n\nInteligência artificial: usamos IA (Claude, da Anthropic) para ajudar no código. Na arte, só o fundo e as plataformas das fases foram feitos com IA."},
 ]
 ## Os textos sobre o bicudinho: cada um fica solto no desktop de uma fase (loose_doc) e,
@@ -937,7 +937,7 @@ func _draw() -> void:
 func _taskbar_items() -> Array:
 	var items: Array = []
 	if not is_hub:
-		items.append([level_name if level_name != "" else "Bicudinho", "game", null])
+		items.append([level_name if level_name != "" else "Quito", "game", null])
 	for w in _windows:
 		if not w.visible:
 			continue
