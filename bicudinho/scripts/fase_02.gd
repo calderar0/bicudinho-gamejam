@@ -4,7 +4,7 @@ extends LevelBase
 ## A janela mostra as colunas 10 a 37 e as linhas 4 a 17. O chão fica na linha 16.
 ##   10-16  chão de partida
 ##   17-30  rio de 14 tiles
-##   31-37  barranco de 8 tiles de altura com a bicudinha
+##   31-37  barranco de 8 tiles de altura com o graveto
 ## Sem ajuda é impossível: pulo + disparada sobe ~9 tiles mas só anda ~7 para o lado,
 ## e planar ganha distância perdendo altura. Uma pasta no meio do rio, uns 4 tiles
 ## acima do chão, resolve (com disparadas); duas pastas deixam fácil.
@@ -17,7 +17,7 @@ extends LevelBase
 func _setup_level() -> void:
 	window_rect = Rect2(160, 64, 448, 224)  # janela fixa
 	bird_start = Vector2(200, 256)          # pés sobre o chão (linha 16 do mapa)
-	exit_feet = Vector2(560, 128)           # a bicudinha espera em cima do barranco (topo em y=128)
+	exit_feet = Vector2(560, 128)           # o graveto fica em cima do barranco (topo em y=128)
 	icons_data = [
 		{"type": "folder", "x": 16, "y": 32, "label": "fotos_rio", "contents": [
 			{"kind": "image", "name": "rio_01.jpg", "photo": "rio_01",
@@ -45,4 +45,4 @@ func _setup_level() -> void:
 func _paint_map(g: Array) -> void:
 	paint(g, 0, 16, 39, 17, "#")    # chão
 	paint(g, 17, 16, 30, 17, "~")   # rio (14 tiles)
-	paint(g, 31, 8, 39, 15, "#")    # barranco da bicudinha (8 tiles)
+	paint(g, 31, 8, 39, 15, "#")    # barranco do graveto (8 tiles)

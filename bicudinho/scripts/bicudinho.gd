@@ -12,6 +12,7 @@ extends CharacterBody2D
 
 signal died(cause: String)
 signal glass_hit(pos: Vector2)
+signal lives_changed(lives: int)
 
 enum State { NORMAL, PREPARE, DASH, STUN }
 
@@ -22,7 +23,9 @@ var coyote := 0.0
 var jump_buffer := 0.0
 var anim_time := 0.0
 var dead := false
+var lives := Tuning.LIVES     # penas: cada batida no vidro tira uma
 var happy := false            # chegou ao objetivo: fica parado e feliz
+var frozen := false           # chegou ao objetivo: para (feliz ou não)
 var _step_phase := 0.0
 var gliding := false
 
@@ -61,8 +64,8 @@ func _physics_process(delta: float) -> void:
 		_state_time += delta  # só para animar a morte
 		return
 	anim_time += delta
-	if happy:
-		return  # feliz e parado (só a animação roda)
+	if frozen:
+		return  # chegou e parou (só a animação roda)
 	match state:
 		State.NORMAL:
 			_normal(delta)
@@ -211,7 +214,7 @@ func _dash(delta: float) -> void:
 	_dash_travelled += col.get_travel().length()
 	var hit := col.get_collider()
 	if hit is Node and (hit as Node).is_in_group("glass"):
-		_hit_glass(col.get_position())
+		_hit_glass(col.get_position(), hit as Node)
 	elif absf(col.get_normal().x) > 0.7 and _try_ledge_assist(_dash_dir.x):
 		pass  # subiu na quina: a disparada continua
 	else:
@@ -241,7 +244,18 @@ func _end_dash(natural: bool) -> void:
 
 
 ## Aplica a regra do vidro (Tuning.GLASS_RULE) quando a disparada bate nele.
-func _hit_glass(pos: Vector2) -> void:
+## O vidro da fase (GlassPane) se estilhaça; a borda da janela ganha uma rachadura.
+## Toda batida tira uma pena; sem penas, ele morre.
+func _hit_glass(pos: Vector2, hit: Node) -> void:
+	if hit.has_method("shatter"):
+		hit.shatter()
+	else:
+		glass_hit.emit(pos)
+	lives -= 1
+	lives_changed.emit(lives)
+	if lives <= 0:
+		die("glass")
+		return
 	match Tuning.GLASS_RULE:
 		Tuning.GlassRule.BLOCK:
 			_end_dash(false)
@@ -250,9 +264,7 @@ func _hit_glass(pos: Vector2) -> void:
 			_state_time = 0.0
 			_clear_input_memory()
 			velocity = -_dash_dir * 60.0  # um pequeno tranco para trás
-			glass_hit.emit(pos)
 		Tuning.GlassRule.KILL:
-			glass_hit.emit(pos)
 			die("glass")
 
 
@@ -345,8 +357,10 @@ func enforce_inside(interior: Rect2) -> void:
 
 
 ## Chegou ao objetivo (a bicudinha): para tudo e fica feliz. Chamado pela fase.
-func celebrate() -> void:
-	happy = true
+## Chegou ao objetivo: para. cheer = fica feliz (só na última fase, com a bicudinha).
+func celebrate(cheer := true) -> void:
+	frozen = true
+	happy = cheer
 	velocity = Vector2.ZERO
 	gliding = false
 	_state_time = 0.0

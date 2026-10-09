@@ -47,9 +47,28 @@ var _drag_start_mouse := Vector2.ZERO
 var _drag_start_rect := Rect2()
 var _glass_shapes: Array[CollisionShape2D] = []
 var _cracks: Array = []
+## Recorte da arte do vidro usado na rachadura (a placa à esquerda de cada quadro) e o
+## ponto dela que encosta na borda batida (meio da placa).
+const CRACK_SRC := Rect2(0, 0, 40, 32)
+const CRACK_CENTER := Vector2(11, 16)
+var _crack_frames: Array[Texture2D] = []
+## Penas (vidas) desenhadas na barra de título; sem a arte, um placeholder.
+const FEATHER_PATH := "res://art/hud_feather.png"
+const FEATHER_LOST_PATH := "res://art/hud_feather_lost.png"
+var lives := Tuning.LIVES
+var _feather_tex: Texture2D = null
+var _feather_lost_tex: Texture2D = null
 
 
 func setup(interior: Rect2, min_s: Vector2, max_s: Vector2) -> void:
+	if ResourceLoader.exists(FEATHER_PATH):
+		_feather_tex = load(FEATHER_PATH)
+	if ResourceLoader.exists(FEATHER_LOST_PATH):
+		_feather_lost_tex = load(FEATHER_LOST_PATH)
+	for n in [2, 3, 4]:
+		var path := "res://art/glass_%02d.png" % n
+		if ResourceLoader.exists(path):
+			_crack_frames.append(load(path) as Texture2D)
 	rect = interior
 	target = interior
 	min_size = min_s
@@ -88,6 +107,17 @@ func outer_rect() -> Rect2:
 	var g := Tuning.GLASS_THICKNESS
 	var t := Tuning.TITLEBAR_H
 	return Rect2(rect.position - Vector2(g, t), rect.size + Vector2(g * 2.0, g + t))
+
+
+## Quadro da rachadura número i (glass_02, 03, 04, e fica no 04), ou null sem a arte.
+## A arte é carregada já na criação: carregar no meio do _draw desenha um quadrado branco.
+func _crack_texture(i: int) -> Texture2D:
+	return _crack_frames[mini(i, 2)] if _crack_frames.size() == 3 else null
+
+
+func set_lives(value: int) -> void:
+	lives = value
+	queue_redraw()
 
 
 func add_crack(pos: Vector2) -> void:
@@ -292,6 +322,7 @@ func _draw() -> void:
 	draw_style_box(_body_style, Rect2(o.position.x, rect.position.y, o.size.x, o.end.y - rect.position.y))
 	# barra de título: painel azul com borda rosa
 	draw_style_box(_title_style, Rect2(o.position, Vector2(o.size.x, tb_h)))
+	_draw_lives(o.position + Vector2(6, (tb_h - 16.0) / 2.0))
 
 	# botões: coluna = estado, linha = tipo
 	for i in BUTTONS.size():
@@ -310,12 +341,58 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(o.position.x, o.end.y - 3), Vector2(3, 3)), c)
 		draw_rect(Rect2(o.end - Vector2(3, 3), Vector2(3, 3)), c)
 
-	# rachaduras (usadas no passo 3, quando a disparada bate no vidro)
-	for ck in _cracks:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = ck.seed
-		var p: Vector2 = ck.pos
-		for i in 5:
-			var ang := rng.randf() * TAU
-			var length := rng.randf_range(4.0, 10.0)
-			draw_line(p, p + Vector2.from_angle(ang) * length, Color(1, 1, 1, 0.9), 1.0)
+	# rachaduras: a cada batida, um quadro mais quebrado da arte do vidro (glass_02 a 04),
+	# com a placa deitada na borda batida e as trincas abrindo para dentro da janela
+	for i in _cracks.size():
+		var p: Vector2 = _cracks[i].pos
+		var tex := _crack_texture(i)
+		if tex == null:
+			var rng := RandomNumberGenerator.new()
+			rng.seed = _cracks[i].seed
+			for k in 5:
+				var ang := rng.randf() * TAU
+				draw_line(p, p + Vector2.from_angle(ang) * rng.randf_range(4.0, 10.0), Color(1, 1, 1, 0.9), 1.0)
+			continue
+		var d := {"left": p.x - rect.position.x, "right": rect.end.x - p.x,
+			"top": p.y - rect.position.y, "bottom": rect.end.y - p.y}
+		var side: String = d.keys().reduce(func(a, b): return a if d[a] <= d[b] else b)
+		match side:
+			"left":
+				draw_set_transform(Vector2(rect.position.x, p.y))
+			"right":
+				draw_set_transform(Vector2(rect.end.x, p.y), 0.0, Vector2(-1, 1))
+			"top":
+				draw_set_transform(Vector2(p.x, rect.position.y), PI / 2.0, Vector2(1, -1))
+			"bottom":
+				draw_set_transform(Vector2(p.x, rect.end.y), -PI / 2.0)
+		draw_texture_rect_region(tex, Rect2(Vector2(-CRACK_CENTER.x, -CRACK_CENTER.y), CRACK_SRC.size), CRACK_SRC)
+	draw_set_transform(Vector2.ZERO)
+
+
+## Penas (vidas) no canto esquerdo da barra de título: acompanham a janela quando ela muda.
+func _draw_lives(origin: Vector2) -> void:
+	var full := _feather_tex
+	var lost := _feather_lost_tex
+	for i in Tuning.LIVES:
+		var at := origin + Vector2(18.0 * i, 0)
+		var has := i < lives
+		if full != null:
+			if has:
+				draw_texture_rect(full, Rect2(at, Vector2(16, 16)), false)
+			elif lost != null:
+				draw_texture_rect(lost, Rect2(at, Vector2(16, 16)), false)
+			else:
+				draw_texture_rect(full, Rect2(at, Vector2(16, 16)), false, Color(0, 0, 0, 0.35))
+			continue
+		# placeholder: uma pena branca inclinada (cheia) ou só o contorno (perdida)
+		var vane := PackedVector2Array([Vector2(3, 14), Vector2(4, 9), Vector2(8, 4), Vector2(14, 1),
+			Vector2(12, 7), Vector2(7, 12)])
+		for k in vane.size():
+			vane[k] += at
+		if has:
+			draw_colored_polygon(vane, Color("f2f1ed"))
+		else:
+			draw_colored_polygon(vane, Color(1, 1, 1, 0.12))
+		vane.append(vane[0])
+		draw_polyline(vane, Color("1a1a2e") if has else Color(1, 1, 1, 0.35), 1.0)
+		draw_line(at + Vector2(1, 15), at + Vector2(13, 3), Color("a0522d") if has else Color(1, 1, 1, 0.35), 1.0)

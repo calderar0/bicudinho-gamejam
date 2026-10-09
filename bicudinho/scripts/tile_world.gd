@@ -4,6 +4,7 @@ extends Node2D
 ## Regra de ouro: só existe (desenha e colide) o que encosta na área interna da janela.
 ##
 ## Legenda do mapa:  #  chão    =  plataforma fina    ~  rio (perigo)    .  vazio
+##                   |  vidro (GlassPane, 1x2 tiles: marque só a célula de cima)
 
 const GROUND_COLOR := Color("6b4c33")
 const GRASS_COLOR := Color("5aad4e")
@@ -16,6 +17,8 @@ var interior := Rect2()
 var cells: Array = []
 ## Cada perigo: {rect, kind}
 var hazards: Array = []
+## Canto de cima de cada vidro ("|"); a fase cria os GlassPane.
+var glass_spots: Array[Vector2] = []
 
 var _time := 0.0
 
@@ -54,6 +57,8 @@ func setup(rows: PackedStringArray) -> void:
 				"~":
 					cells.append({"ch": ch, "rect": r, "shape": null, "top_open": true})
 					hazards.append({"rect": r, "kind": "river"})
+				"|":
+					glass_spots.append(r.position)
 
 
 ## Chamado toda vez que a janela muda de tamanho.

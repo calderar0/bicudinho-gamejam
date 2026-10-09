@@ -50,6 +50,10 @@ const LEDGE_ASSIST := 12.0
 enum GlassRule { BLOCK, STUN, KILL }
 ## Regra única do vidro (para a disparada): BLOCK só bloqueia, STUN atordoa, KILL mata.
 const GLASS_RULE := GlassRule.STUN
+## Vidas (penas) por fase. Cada batida no vidro na disparada (borda da janela ou vidro
+## da fase) tira uma; a última mata. Morrer reinicia a fase com todas de volta.
+const LIVES := 3
+const GLASS_BREAK_FPS := 12.0   # animação do vidro da fase se estilhaçando (glass_02 a 05)
 
 # --- Bicudinho: arte ----------------------------------------------------------
 ## Soma no Y do sprite. Positivo desce, negativo sobe. Use se ele aparecer

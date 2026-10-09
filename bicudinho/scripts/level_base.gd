@@ -31,11 +31,13 @@ var window_min := Vector2.ZERO
 var window_max := Vector2.ZERO
 ## Onde o bicudinho nasce: os pés (o centro da base dele).
 var bird_start := Vector2(72, 288)
-## Onde fica o objetivo (a bicudinha): o centro da base dela, o "chão" em que ela está.
+## Onde fica o objetivo: o centro da base dele, o "chão" em que ele está.
 var exit_feet := Vector2(560, 288)
-## true (o padrão): o objetivo é chegar na bicudinha, que espera na saída. A árvore do
-## brejo não aparece. Ponha false para usar o ícone do brejo como saída em vez dela.
-var with_female := true
+## O que espera na saída:
+##   "twig" (o padrão): um graveto. Ele pega e segue para a próxima fase, sem festa.
+##   "female": a bicudinha, com os dois felizes (só na última fase).
+##   "brejo": o ícone do brejo.
+var goal := "twig"
 ## Ícones do desktop (x e y são px do canto superior esquerdo). Cada um é um dicionário:
 ##   {"type": "folder", "x": 0, "y": 64, "draggable": true, "label": "nome"}
 ## Tipos: folder, trash, image, file, app, virus, notepad, viewer, help.
@@ -58,7 +60,8 @@ var note_size := Vector2(136, 60)
 var note_open_at_start := true
 ## Texto da barra de tarefas e mensagem que aparece quando vence.
 var hint := "Espaço no ar: preparar | setas: mirar | segurar ↑ caindo: planar | R: reiniciar"
-var win_text := "Achou a bicudinha!"
+## Vazio: o texto padrão do objetivo ("Pegou um graveto!" ou "Achou a bicudinha!").
+var win_text := ""
 ## Próxima fase (caminho da cena). Vazio: recomeça esta (ainda não existe a próxima).
 var next_level := ""
 var wallpaper_color := Color("4d8f66")
@@ -70,8 +73,10 @@ var win: GameWindow
 var tiles: TileWorld
 var bird: Bicudinho
 var icons: Array[DeskIcon] = []
+var panes: Array[GlassPane] = []
 var exit_icon: DeskIcon
 var female: Female
+var twig: Twig
 
 var _restarting := false
 var _won := false
@@ -82,6 +87,8 @@ var _start_menu: StartMenu
 var _overlay: Node2D   # desenha a sombra de onde o ícone vai cair
 ## Janelas de interface (bloco de notas, pastas, foto, texto). A última está por cima.
 var _windows: Array[MiniWindow] = []
+## Mini-janela em que o bicudinho pisou por último (ele desenha logo acima dela), ou null.
+var _bird_window: MiniWindow = null
 var _notepad: MiniWindow = null
 var _viewer: PhotoWindow = null
 var _text_window: MiniWindow = null
@@ -113,17 +120,28 @@ func _ready() -> void:
 	tiles.setup(_build_map())
 	add_child(tiles)
 
+	for spot in tiles.glass_spots:
+		var pane := GlassPane.new()
+		pane.position = spot
+		add_child(pane)
+		panes.append(pane)
+
 	for entry: Dictionary in icons_data:
 		_add_icon_from_data(entry)
 
 	var s := Tuning.ICON_SIZE
 	exit_icon = _add_icon("brejo", Vector2(exit_feet.x - s / 2.0, exit_feet.y - s), false)
-	if with_female:
-		# a bicudinha É o destino: a árvore não se desenha, mas o ícone continua valendo
-		# (chegar nele vence, e some se a janela o cortar)
+	# o graveto ou a bicudinha É o destino: a árvore não se desenha, mas o ícone continua
+	# valendo (chegar nele vence, e some se a janela o cortar)
+	if goal == "female":
 		female = Female.new()
 		female.position = exit_feet
 		add_child(female)
+		exit_icon.show_art = false
+	elif goal == "twig":
+		twig = Twig.new()
+		twig.position = exit_feet
+		add_child(twig)
 		exit_icon.show_art = false
 
 	bird = BICUDINHO_SCENE.instantiate() as Bicudinho
@@ -131,6 +149,8 @@ func _ready() -> void:
 	bird.hazard_check = Callable(tiles, "hazard_hit")
 	bird.died.connect(_on_bird_died)
 	bird.glass_hit.connect(win.add_crack)  # a batida no vidro desenha uma rachadura
+	bird.lives_changed.connect(win.set_lives)  # penas na barra de título da janela
+	win.set_lives(bird.lives)
 	add_child(bird)
 	if female != null:
 		female.target = bird  # a bicudinha sempre encara o bicudinho
@@ -211,12 +231,16 @@ func _add_icon_from_data(entry: Dictionary) -> void:
 
 func _on_rect_changed() -> void:
 	tiles.set_interior(win.rect)
+	for pane in panes:
+		pane.update_inside(win.rect)
 	if Tuning.ICON_PUSH_OUT:
 		_push_icons_out()
 	for ic in icons:
 		ic.update_inside(win.rect)
 	if female != null:
 		female.visible = exit_icon.visible  # regra de ouro: ela só existe junto do objetivo
+	if twig != null:
+		twig.visible = exit_icon.visible
 	bird.enforce_inside(win.rect)
 	queue_redraw()
 
@@ -277,6 +301,9 @@ func _drop_valid(ic: DeskIcon, p: Vector2) -> bool:
 			return false
 		if tiles.solid_overlaps(r):
 			return false
+		for pane in panes:
+			if not pane.broken and pane.rect().intersects(r):
+				return false
 	for other in icons:
 		if other != ic and other.rect().intersects(r):
 			return false
@@ -341,6 +368,7 @@ func _register_window(w: MiniWindow) -> void:
 	_windows.append(w)
 	add_child(w)
 	_keep_menu_on_top()
+	_restack()
 
 
 func _keep_menu_on_top() -> void:
@@ -354,6 +382,35 @@ func _raise(w: MiniWindow) -> void:
 	_windows.append(w)
 	move_child(w, get_child_count() - 1)
 	_keep_menu_on_top()
+	_restack()
+
+
+## Empilha as mini-janelas de 2 em 2 no z (100, 102, 104...): o vão entre elas é onde o
+## bicudinho entra quando está em cima de uma (veja _update_bird_layer).
+func _restack() -> void:
+	for i in _windows.size():
+		_windows[i].z_index = 100 + 2 * i
+	_update_bird_layer()
+
+
+## O bicudinho fica atrás das mini-janelas, como o resto do jogo. Só quando pisa no topo de
+## uma ele passa a desenhar logo acima dela (e abaixo das que estão por cima dela). Continua
+## assim no ar até pousar em outra coisa.
+func _update_bird_layer() -> void:
+	if bird == null:
+		return
+	if bird.is_on_floor():
+		_bird_window = null
+		for i in bird.get_slide_collision_count():
+			var col := bird.get_slide_collision(i)
+			if col.get_normal().y > -0.5:
+				continue
+			for w in _windows:
+				if col.get_collider() == w.platform_body:
+					_bird_window = w
+	if _bird_window != null and not _bird_window.visible:
+		_bird_window = null
+	bird.z_index = _bird_window.z_index + 1 if _bird_window != null else 0
 
 
 ## A janela aberta que está por cima, ou null.
@@ -455,6 +512,7 @@ func _open_text(file: Dictionary) -> void:
 func _physics_process(_delta: float) -> void:
 	for w in _windows:
 		w.update_platform(win.rect)  # o topo das mini-janelas é plataforma
+	_update_bird_layer()
 	if _won or _restarting or bird.dead:
 		return
 	# o objetivo só existe (visível) quando está inteiro dentro da janela
@@ -464,9 +522,13 @@ func _physics_process(_delta: float) -> void:
 
 func _win_level() -> void:
 	_won = true
-	bird.celebrate()  # para e fica feliz
 	if female != null:
+		bird.celebrate()  # última fase: para e fica feliz
 		female.set_happy(true)  # ela também fica feliz e solta um coração
+	else:
+		bird.celebrate(false)  # pega o graveto e para, sem festa
+		if twig != null:
+			twig.pick_up()
 	Audio.stop_music()
 	Audio.play("sfx_win_level", 0.0, Tuning.WIN_VOLUME_DB)
 	queue_redraw()
@@ -617,6 +679,10 @@ func _draw() -> void:
 	draw_texture_rect(TASKBAR_TEX, Rect2(0, Tuning.SCREEN_H - Tuning.TASKBAR_H, Tuning.SCREEN_W, Tuning.TASKBAR_H), false)
 	draw_string(ThemeDB.fallback_font, Vector2(26, Tuning.SCREEN_H - 5), hint,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("f2f1ed"))
-	if _won and win_text != "":
-		draw_string(ThemeDB.fallback_font, win.rect.get_center() + Vector2(-60, -40), win_text,
+	var text := win_text
+	if text == "":
+		text = "Achou a bicudinha!" if goal == "female" else "Pegou um graveto!"
+	if _won:
+		draw_string(ThemeDB.fallback_font, win.rect.get_center() + Vector2(-60, -40), text,
 			HORIZONTAL_ALIGNMENT_CENTER, 120, 16, Color("2f3a8f"))
+

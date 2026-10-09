@@ -27,12 +27,14 @@ var _dragging := false
 var _drag_offset := Vector2.ZERO
 var drag_start := Vector2.ZERO   # onde estava antes de arrastar (para voltar se o lugar for proibido)
 var _platform: CollisionShape2D
+var platform_body: StaticBody2D   # quem colide: a fase descobre se o bicudinho está em cima
 var _platform_shape := RectangleShape2D.new()
 
 
 func _ready() -> void:
 	z_index = 100
 	var body := StaticBody2D.new()
+	platform_body = body
 	body.collision_layer = 1   # mundo
 	body.collision_mask = 0
 	_platform = CollisionShape2D.new()

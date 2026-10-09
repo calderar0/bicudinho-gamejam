@@ -1,6 +1,6 @@
 extends LevelBase
 ## Cena de teste (teste_janela): janela redimensionável com vidro, mapa, ícones arrastáveis,
-## bicudinho e a bicudinha no fim. Serve para experimentar mecânicas sem mexer nas fases.
+## bicudinho e o graveto no fim. Serve para experimentar mecânicas sem mexer nas fases.
 
 
 func _setup_level() -> void:
