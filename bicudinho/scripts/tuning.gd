@@ -42,7 +42,7 @@ const PREPARE_GRAVITY_SCALE := 0.05     # fração da gravidade durante a pausa
 const DASH_SPEED := 400.0
 const DASH_DISTANCE := 80.0             # 5 tiles
 const DASH_EXIT_SPEED_SCALE := 0.35     # velocidade que sobra ao fim da disparada
-const STUN_TIME := 0.5                  # atordoado ao bater no vidro
+const STUN_TIME := 2.0                  # atordoado ao bater no vidro: sem poder fazer nada
 
 enum GlassRule { BLOCK, STUN, KILL }
 ## Regra única do vidro (para a disparada): BLOCK só bloqueia, STUN atordoa, KILL mata.
@@ -60,6 +60,10 @@ const PREPARE_FPS := 20.0        # 3 quadros em ~0,15 s
 const DASH_FPS := 16.0
 const JUMP_FPS := 12.0           # o pulinho toca uma vez e fica no último quadro
 const DEAD_FPS := 6.0            # a morte toca uma vez (4 quadros em ~0,67 s)
+const STUN_FPS := 8.0            # atordoado: 4 quadros repetindo
+const HAPPY_FPS := 4.0           # feliz ao chegar no objetivo: 2 quadros repetindo
+const FEMALE_IDLE_FPS := 3.0     # a bicudinha parada: 2 quadros repetindo
+const FEMALE_HAPPY_FPS := 4.0    # a bicudinha feliz (com coração): 2 quadros repetindo
 
 # --- Janela do jogo e vidro ---------------------------------------------------
 const GLASS_THICKNESS := 3.0     # espessura visual do vidro (moldura preta + cinza)
@@ -69,3 +73,16 @@ const RESIZE_SPEED := 360.0      # px/s: limite de velocidade ao redimensionar
 const RESIZE_GRAB := 6.0         # largura da faixa de arrasto na borda
 const RESIZE_CORNER := 12.0      # tamanho da zona de canto
 const SNAP := 16.0               # o tamanho da janela anda de 16 em 16 px
+
+# --- Ícones do desktop --------------------------------------------------------
+## Tamanho de cada ícone em px: desenho, colisão, clique e regras de largar.
+## 32 = 2x2 tiles (16 = 1 tile). A grade para largar continua sendo SNAP (16 px).
+## Para caber fora da janela, deixe uma margem de pelo menos ICON_SIZE + 3 px de cada lado.
+const ICON_SIZE := 32.0
+## Alinha o desenho do ícone ao colisor: sobe a arte pela margem transparente do topo,
+## para o bicudinho pisar na parte que se vê (e não pairar sobre o vazio do PNG).
+## Desligue quando a artista entregar os ícones preenchendo o quadro inteiro.
+const ICON_ART_ALIGN_TOP := true
+## A janela não engole ícone: se uma borda passa por cima de um ícone arrastável (ficando
+## metade dentro, metade fora), ele é empurrado para fora, para o lado mais próximo livre.
+const ICON_PUSH_OUT := true

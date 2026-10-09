@@ -22,6 +22,7 @@ var coyote := 0.0
 var jump_buffer := 0.0
 var anim_time := 0.0
 var dead := false
+var happy := false            # chegou ao objetivo: fica parado e feliz
 var _step_phase := 0.0
 var gliding := false
 
@@ -60,6 +61,8 @@ func _physics_process(delta: float) -> void:
 		_state_time += delta  # só para animar a morte
 		return
 	anim_time += delta
+	if happy:
+		return  # feliz e parado (só a animação roda)
 	match state:
 		State.NORMAL:
 			_normal(delta)
@@ -146,6 +149,7 @@ func _start_prepare() -> void:
 	state = State.PREPARE
 	_state_time = 0.0
 	gliding = false
+	_clear_input_memory()  # o toque de pulo já foi gasto em preparar o voo
 	velocity = Vector2(velocity.x * 0.3, minf(velocity.y, 0.0) * 0.3)
 
 
@@ -221,6 +225,7 @@ func _hit_glass(pos: Vector2) -> void:
 		Tuning.GlassRule.STUN:
 			state = State.STUN
 			_state_time = 0.0
+			_clear_input_memory()
 			velocity = -_dash_dir * 60.0  # um pequeno tranco para trás
 			glass_hit.emit(pos)
 		Tuning.GlassRule.KILL:
@@ -230,13 +235,22 @@ func _hit_glass(pos: Vector2) -> void:
 
 # --- Estado STUN: atordoado ----------------------------------------------------
 
+## Atordoado: não lê nenhuma tecla (nada fica "na fila") e só cai e desliza até parar.
 func _stun(delta: float) -> void:
 	_state_time += delta
 	velocity.x = move_toward(velocity.x, 0.0, 400.0 * delta)
 	velocity.y = minf(velocity.y + Tuning.GRAVITY * delta, Tuning.MAX_FALL_SPEED)
 	move_and_slide()
 	if _state_time >= Tuning.STUN_TIME:
+		_clear_input_memory()  # volta ao normal sem ação pronta (sem pulo automático)
 		state = State.NORMAL
+
+
+## Esquece o toque de pulo guardado (buffer) e o coyote time. Sem isso, um toque que
+## sobrou de antes do stun virava um pulo sozinho assim que ele voltava ao chão.
+func _clear_input_memory() -> void:
+	jump_buffer = 0.0
+	coyote = 0.0
 
 
 # --- Medição, perigos, empurrão da janela e morte -----------------------------
@@ -307,6 +321,14 @@ func enforce_inside(interior: Rect2) -> void:
 		die("crush")
 
 
+## Chegou ao objetivo (a bicudinha): para tudo e fica feliz. Chamado pela fase.
+func celebrate() -> void:
+	happy = true
+	velocity = Vector2.ZERO
+	gliding = false
+	_state_time = 0.0
+
+
 ## Congela e começa a animação de morte. Quem escuta o sinal `died` reinicia a fase.
 func die(cause: String) -> void:
 	if dead:
@@ -326,7 +348,8 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if not _draw_art():
 		_draw_placeholder()
-	if state == State.STUN and not dead:
+	# estrelinhas desenhadas por código só quando a arte do stun não existe
+	if state == State.STUN and not dead and _get_frames("bicudinho_stun").is_empty():
 		_draw_stars()
 
 
@@ -354,6 +377,8 @@ func _get_frames(art_name: String) -> Array:
 func _art_name() -> String:
 	if dead:
 		return "bicudinho_dead"
+	if happy:
+		return "bicudinho_happy"
 	match state:
 		State.PREPARE:
 			return "bicudinho_prepare"
@@ -373,6 +398,8 @@ func _art_name() -> String:
 ## Qual arte usar quando a do estado ainda não existe, em ordem de preferência.
 func _fallbacks(art_name: String) -> Array[String]:
 	match art_name:
+		"bicudinho_happy":
+			return ["bicudinho_idle", "bicudinho_walk"]
 		"bicudinho_idle":
 			return ["bicudinho_walk"]
 		"bicudinho_glide":
@@ -402,6 +429,10 @@ func _loop_fps(art_name: String) -> float:
 			return Tuning.PREPARE_FPS
 		"bicudinho_dash":
 			return Tuning.DASH_FPS
+		"bicudinho_stun":
+			return Tuning.STUN_FPS
+		"bicudinho_happy":
+			return Tuning.HAPPY_FPS
 	return Tuning.GLIDE_FPS  # planar: bater de asas
 
 
@@ -436,8 +467,9 @@ func _draw_art() -> bool:
 	elif used == "bicudinho_walk" and art_name != "bicudinho_walk":
 		idx = 0
 	else:
-		# preparar e disparar começam do primeiro quadro; o resto usa o tempo geral
-		var t_anim := _state_time if (state == State.PREPARE or state == State.DASH) else anim_time
+		# preparar, disparar e atordoado começam do primeiro quadro; o resto usa o tempo geral
+		var from_start := state == State.PREPARE or state == State.DASH or state == State.STUN
+		var t_anim := _state_time if from_start else anim_time
 		idx = int(t_anim * _loop_fps(used)) % frames.size()
 
 	var t: Texture2D = frames[idx]

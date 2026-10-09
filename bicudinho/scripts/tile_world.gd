@@ -76,6 +76,15 @@ func hazard_hit(box: Rect2) -> String:
 	return ""
 
 
+## True se o retângulo encosta em algum tile sólido ativo (dentro da janela).
+## Usado para recusar ícones largados dentro de parede.
+func solid_overlaps(r: Rect2) -> bool:
+	for c in cells:
+		if c.shape != null and (c.rect as Rect2).intersects(interior) and (c.rect as Rect2).intersects(r):
+			return true
+	return false
+
+
 func _process(delta: float) -> void:
 	_time += delta
 	if not hazards.is_empty():
