@@ -25,3 +25,15 @@ Material de terceiros usado no jogo, com autor e licença.
 | Arquivo no projeto | Arquivo original | Autor | Licença |
 | --- | --- | --- | --- |
 | `music/music_game.ogg` | Pixel Song #10, https://freesound.org/s/335625/ (convertido para OGG) | hmmm101 | Creative Commons 0 |
+
+## Equipe
+
+| Pessoa | Função |
+| --- | --- |
+| Letícia Akemi Ikemoto | Arte e Game Design |
+| Felipe Calderaro | Programação e Game Design |
+| Bianca Valenciani | Efeitos Sonoros e Game Design |
+
+## Inteligência artificial
+
+Como pede a regra da jam: usamos IA (Claude, da Anthropic) para ajudar a escrever o código. Na arte, só o fundo e as plataformas das fases foram feitos com IA. Os arquivos feitos assim estão marcados como "AI-generated" nesta lista ou no próprio código.

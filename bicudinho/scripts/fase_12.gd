@@ -16,6 +16,7 @@ func _setup_level() -> void:
 	bird_start = Vector2(72, 288)
 	exit_feet = Vector2(568, 288)
 	goal = "female"                         # a fase da bicudinha: os dois felizes
+	with_nest = true                        # ela espera no pé do ninho
 	auto_walk = true
 	icons_data = [
 		{"type": "folder", "x": 288, "y": 32, "label": "ninho"},

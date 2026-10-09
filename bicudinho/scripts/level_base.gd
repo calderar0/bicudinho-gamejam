@@ -48,6 +48,9 @@ var exit_feet := Vector2(560, 288)
 ##   "female": a bicudinha, com os dois felizes (só na última fase).
 ##   "brejo": o ícone do brejo.
 var goal := "twig"
+## O ninho final (art/nest.png) atrás da saída: a fase da bicudinha e os créditos.
+var with_nest := false
+var nest: Nest
 ## Ícones do desktop (x e y são px do canto superior esquerdo). Cada um é um dicionário:
 ##   {"type": "folder", "x": 0, "y": 64, "draggable": true, "label": "nome"}
 ## Tipos: folder, trash, image, file, app, virus, notepad, viewer, help.
@@ -147,8 +150,8 @@ const PHOTOS_FILES := [
 ]
 ## A pasta "créditos": quem fez o jogo e o material de terceiros (veja CREDITS.md).
 const CREDIT_FILES := [
-	{"kind": "text", "name": "equipe.txt", "text": "Bicudinho, feito para a GameRex 2026.\n\nBianca Valenciani\nFelipe Calderaro\nLetícia Akemi Ikemoto"},
-	{"kind": "text", "name": "terceiros.txt", "text": "Arte da interface: DampSquib (Computer Icons Asset Pack).\n\nSons: matthewvakaliuk73627, 47313572 e soundshelfstudio (Pixabay); Tuudurt (CC0); heyheytheree (CC BY 4.0).\n\nMúsica: hmmm101, Pixel Song #10 (CC0)."},
+	{"kind": "text", "name": "equipe.txt", "text": "Bicudinho, feito para a GameRex 2026.\n\nLetícia Akemi Ikemoto\nArte e Game Design\n\nFelipe Calderaro\nProgramação e Game Design\n\nBianca Valenciani\nEfeitos Sonoros e Game Design"},
+	{"kind": "text", "name": "terceiros.txt", "text": "Arte da interface: DampSquib (Computer Icons Asset Pack).\n\nSons: matthewvakaliuk73627, 47313572 e soundshelfstudio (Pixabay); Tuudurt (CC0); heyheytheree (CC BY 4.0).\n\nMúsica: hmmm101, Pixel Song #10 (CC0).\n\nInteligência artificial: usamos IA (Claude, da Anthropic) para ajudar no código. Na arte, só o fundo e as plataformas das fases foram feitos com IA."},
 ]
 ## Os textos sobre o bicudinho: cada um fica solto no desktop de uma fase (loose_doc) e,
 ## lido uma vez, entra na pasta "trabalho" de todas as fases (fica salvo).
@@ -243,6 +246,15 @@ func _ready() -> void:
 		twig.position = exit_feet
 		add_child(twig)
 		exit_icon.show_art = false
+
+	if with_nest:
+		nest = Nest.new()
+		nest.position = exit_feet
+		add_child(nest)
+		if female != null:
+			move_child(nest, female.get_index())   # atrás da bicudinha (e do bicudinho, que vem depois)
+		exit_icon.show_art = false
+		world_nodes.append(nest)
 
 	bird = BICUDINHO_SCENE.instantiate() as Bicudinho
 	bird.position = bird_start
@@ -364,7 +376,9 @@ func _refresh_exit() -> void:
 		female.visible = exit_icon.inside
 	if twig != null:
 		twig.visible = exit_icon.inside
-	if goal != "brejo":
+	if nest != null:
+		nest.visible = exit_icon.inside and not _minimized
+	if goal != "brejo" or with_nest:
 		exit_icon.hide_outside = false
 		exit_icon.show_art = not exit_icon.inside
 		exit_icon.visible = true

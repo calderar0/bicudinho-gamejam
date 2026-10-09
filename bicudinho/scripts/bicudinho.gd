@@ -34,6 +34,8 @@ var happy := false            # chegou ao objetivo: fica parado e feliz
 var frozen := false           # chegou ao objetivo: para (feliz ou não)
 var _step_phase := 0.0
 var gliding := false
+## Voando numa cena (o final dos créditos): usa a arte de planar, batendo as asas.
+var flying := false
 
 ## Função que recebe a caixa do bicudinho (Rect2) e devolve "river", "trash" ou "".
 var hazard_check: Callable = Callable()
@@ -513,6 +515,8 @@ func _art_name() -> String:
 			return "bicudinho_dash"
 		State.STUN:
 			return "bicudinho_stun"
+	if flying:
+		return "bicudinho_glide"
 	if is_on_floor():
 		if absf(velocity.x) > 10.0:
 			return "bicudinho_walk"
