@@ -140,6 +140,9 @@ func _normal(delta: float) -> void:
 		velocity.y = minf(velocity.y + Tuning.GRAVITY * delta, Tuning.MAX_FALL_SPEED)
 
 	move_and_slide()
+	# bateu de lado numa quina de terra no ar, empurrando contra ela: sobe nela
+	if not is_on_floor() and is_on_wall() and dir * get_wall_normal().x < 0.0:
+		_try_ledge_assist(dir)
 	_step_sounds(delta)
 
 
@@ -190,6 +193,7 @@ func _start_dash(aim: Vector2) -> void:
 	velocity = Vector2.ZERO
 	if aim.x != 0.0:
 		facing = 1 if aim.x > 0.0 else -1
+	Audio.play("sfx_dash", 0.05)
 
 
 func _dash(delta: float) -> void:
@@ -208,8 +212,27 @@ func _dash(delta: float) -> void:
 	var hit := col.get_collider()
 	if hit is Node and (hit as Node).is_in_group("glass"):
 		_hit_glass(col.get_position())
+	elif absf(col.get_normal().x) > 0.7 and _try_ledge_assist(_dash_dir.x):
+		pass  # subiu na quina: a disparada continua
 	else:
 		_end_dash(false)  # bateu em parede ou chão: só para
+
+
+## Bateu de lado na terra perto do topo? Sobe na quina em vez de escorregar.
+## Contra o vidro nunca funciona: o vidro tem a altura inteira da janela.
+func _try_ledge_assist(dir_x: float) -> bool:
+	if dir_x == 0.0:
+		return false
+	var side := Vector2(signf(dir_x) * 2.0, 0.0)
+	for lift in range(1, int(Tuning.LEDGE_ASSIST) + 1):
+		var up := Vector2(0.0, -lift)
+		if test_move(global_transform, up):
+			return false  # teto em cima: não cabe
+		if not test_move(global_transform.translated(up), side):
+			global_position += up
+			velocity.y = minf(velocity.y, 0.0)
+			return true
+	return false
 
 
 func _end_dash(natural: bool) -> void:
@@ -255,15 +278,15 @@ func _clear_input_memory() -> void:
 
 # --- Medição, perigos, empurrão da janela e morte -----------------------------
 
-## Um passo a cada 2 quadros da animação de andar (quadros 1 e 3).
+## Passos no ritmo de Tuning.STEPS_PER_SECOND enquanto anda no chão.
 func _step_sounds(delta: float) -> void:
 	if not is_on_floor() or absf(velocity.x) <= 10.0:
 		_step_phase = 0.0
 		return
 	var before := int(_step_phase)
-	_step_phase += delta * Tuning.WALK_FPS / 2.0
+	_step_phase += delta * Tuning.STEPS_PER_SECOND
 	if int(_step_phase) != before:
-		Audio.play("sfx_step", 0.08, -4.0)
+		Audio.play("sfx_step", 0.08, Tuning.STEP_VOLUME_DB)
 
 
 func _measure() -> void:

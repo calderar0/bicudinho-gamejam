@@ -43,6 +43,9 @@ const DASH_SPEED := 400.0
 const DASH_DISTANCE := 80.0             # 5 tiles
 const DASH_EXIT_SPEED_SCALE := 0.35     # velocidade que sobra ao fim da disparada
 const STUN_TIME := 2.0                  # atordoado ao bater no vidro: sem poder fazer nada
+## Bater de lado na terra a até esta altura (px) abaixo do topo sobe na quina
+## em vez de escorregar. Vale para a disparada e para o pulo. Nunca no vidro.
+const LEDGE_ASSIST := 12.0
 
 enum GlassRule { BLOCK, STUN, KILL }
 ## Regra única do vidro (para a disparada): BLOCK só bloqueia, STUN atordoa, KILL mata.
@@ -64,6 +67,14 @@ const STUN_FPS := 8.0            # atordoado: 4 quadros repetindo
 const HAPPY_FPS := 4.0           # feliz ao chegar no objetivo: 2 quadros repetindo
 const FEMALE_IDLE_FPS := 3.0     # a bicudinha parada: 2 quadros repetindo
 const FEMALE_HAPPY_FPS := 4.0    # a bicudinha feliz (com coração): 2 quadros repetindo
+
+# --- Sons ---------------------------------------------------------------------
+## Volume dos passos em dB (0 = original, -6 = metade, mais negativo = mais baixo).
+const STEP_VOLUME_DB := -14.0
+## Volume do som de vitória da fase em dB.
+const WIN_VOLUME_DB := -12.0
+## Quantos passos tocam por segundo enquanto ele anda.
+const STEPS_PER_SECOND := 4.0
 
 # --- Janela do jogo e vidro ---------------------------------------------------
 const GLASS_THICKNESS := 3.0     # espessura visual do vidro (moldura preta + cinza)
