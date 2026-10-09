@@ -29,3 +29,5 @@ func _paint_map(g: Array) -> void:
 	paint(g, 19, 18, 29, 19, "~")   # rio contínuo (11 tiles), passando por baixo da plataforma
 	paint(g, 22, 16, 25, 17, "#")   # plataforma 2 tiles acima do chão, sobre o rio
 	paint(g, 30, 18, 39, 19, "#")   # chão do outro lado
+	paint(g, 22, 15, 22, 15, "^")   # lixo no começo da plataforma
+	paint(g, 32, 16, 32, 16, "|")   # vidro no chão antes do graveto: pule por cima

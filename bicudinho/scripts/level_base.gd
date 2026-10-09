@@ -20,7 +20,8 @@ const ROWS := 21
 const BICUDINHO_SCENE := preload("res://scenes/bicudinho.tscn")
 const TASKBAR_TEX := preload("res://art/ui/taskbar.png")
 const WALLPAPER_TEX := preload("res://art/ui/wallpaper.png")   # 640x360, a tela toda
-const WIN_RESTART_TIME := 1.5   # segundos entre chegar no objetivo e ir para a próxima fase
+const WIN_RESTART_TIME := 2.2   # segundos entre chegar no objetivo e ir para a próxima fase
+                                # (dá tempo de ver o graveto voar até a pasta)
 ## Barra de tarefas: um botão por janela aberta (o jogo e as mini-janelas), com ícone.
 const TASK_X := 26.0
 const TASK_W := 104.0
@@ -106,6 +107,7 @@ var twig: Twig
 
 var _restarting := false
 var _won := false
+var _won_time := 0.0   # segundos desde a vitória (o texto entra com um pulinho)
 var _drag_icon: DeskIcon = null
 var _drag_offset := Vector2.ZERO
 var _drag_origin := Vector2.ZERO
@@ -148,11 +150,22 @@ const CREDIT_FILES := [
 	{"kind": "text", "name": "equipe.txt", "text": "Bicudinho, feito para a GameRex 2026.\n\nBianca Valenciani\nFelipe Calderaro\nLetícia Akemi Ikemoto"},
 	{"kind": "text", "name": "terceiros.txt", "text": "Arte da interface: DampSquib (Computer Icons Asset Pack).\n\nSons: matthewvakaliuk73627, 47313572 e soundshelfstudio (Pixabay); Tuudurt (CC0); heyheytheree (CC BY 4.0).\n\nMúsica: hmmm101, Pixel Song #10 (CC0)."},
 ]
-## A pasta "trabalho": um texto curto sobre a espécie.
-const WORK_FILES := [
-	{"kind": "text", "name": "bicudinho.txt", "text": "Bicudinho-do-brejo-paulista\n(Formicivora paludicola)\n\nUm passarinho pequeno que só existe no estado de São Paulo. Foi descrito pela ciência em 2013.\n\nVive em brejos com taboa, nas várzeas do alto rio Tietê e do rio Paraíba do Sul, perto da cidade.\n\nEstá criticamente ameaçado de extinção: os brejos somem com aterros, represas, queimadas e o crescimento da cidade.\n\nCuidar dos brejos é cuidar dele."},
-]
+## Os textos sobre o bicudinho: cada um fica solto no desktop de uma fase (loose_doc) e,
+## lido uma vez, entra na pasta "trabalho" de todas as fases (fica salvo).
+const DOCS := {
+	"bicudinho": {"kind": "text", "name": "bicudinho.txt", "text": "Bicudinho-do-brejo-paulista\n(Formicivora paludicola)\n\nUm passarinho pequeno que só existe no estado de São Paulo. Foi descrito pela ciência em 2013.\n\nVive em brejos com taboa, nas várzeas do alto rio Tietê e do rio Paraíba do Sul, perto da cidade.\n\nEstá criticamente ameaçado de extinção: os brejos somem com aterros, represas, queimadas e o crescimento da cidade.\n\nCuidar dos brejos é cuidar dele."},
+	"ninho": {"kind": "text", "name": "ninho.txt", "text": "Por que gravetos?\n\nO bicudinho está montando um ninho para a bicudinha. Cada graveto que ele pega no fim de uma fase vai para a pasta \"gravetos\".\n\nO caminho é longo: começa no brejo limpo e vai seguindo o Tietê até a cidade, onde o rio fica sujo e tudo é vidro e barulho.\n\nQuando o ninho estiver pronto, ele vai atrás dela."},
+	"diario": {"kind": "text", "name": "diario.txt", "text": "Diário do bicudinho\n\nDia 1. Achei o primeiro graveto perto de casa. O brejo cheira a chuva.\n\nDia 3. A janela era pequena demais. Esticando, o mundo apareceu: ele já estava lá.\n\nDia 9. A cidade não para de piscar \"VOCÊ GANHOU!\". Eu só queria um graveto.\n\nDia 11. Noite. Alguém lá fora acendeu uma luz para mim. Obrigado."},
+	"nome": {"kind": "text", "name": "nome.txt", "text": "O que quer dizer o nome?\n\nFormicivora: \"que come formigas\". É o grupo dos papa-formigas.\n\npaludicola: \"que mora no pântano\", ou seja, no brejo.\n\nE \"bicudinho\" é o jeito carinhoso de chamar um passarinho pequeno, de bico fino."},
+	"comida": {"kind": "text", "name": "comida.txt", "text": "O que ele come\n\nInsetos e outros bichinhos pequenos, como aranhas, que ele procura no meio da taboa e do capim do brejo.\n\nEle costuma ficar escondido na vegetação do brejo, por isso é difícil de ver."},
+	"como_ajudar": {"kind": "text", "name": "como_ajudar.txt", "text": "Como ajudar o bicudinho\n\n- Não jogue lixo nos rios e córregos.\n- Brejo não é terreno vazio: não aterre nem drene.\n- Fogo no mato destrói o brejo: nada de queimadas.\n- Apoie quem protege as várzeas do Tietê.\n\nSem brejo, não tem bicudinho."},
+}
+## Ordem dos textos dentro da pasta.
+const DOC_ORDER := ["bicudinho", "ninho", "nome", "comida", "como_ajudar", "diario"]
 var twig_folder: DeskIcon
+var work_folder: DeskIcon
+## O texto solto no desktop desta fase (uma chave de DOCS), ou "" para nenhum.
+var loose_doc := ""
 ## A janela do jogo está minimizada: o mundo some e só fica o desktop.
 var _minimized := false
 ## Nós do mundo que somem ao minimizar (a fase pode acrescentar os seus, como a ponte).
@@ -213,6 +226,7 @@ func _ready() -> void:
 		_add_icon_from_data(entry)
 
 	_add_desktop_folders()
+	_add_loose_doc()
 	_add_exe_icons()
 
 	var s := Tuning.ICON_SIZE
@@ -590,6 +604,8 @@ func _open_icon(ic: DeskIcon) -> void:
 			_open_folder(ic)
 		"file":
 			_open_file(ic.file_data)
+			if ic.doc_key != "":
+				_unlock_doc(ic.doc_key)
 
 
 func _open_notepad() -> void:
@@ -679,8 +695,13 @@ func _win_level() -> void:
 	else:
 		bird.celebrate(false)  # pega o graveto e para, sem festa
 		if twig != null:
-			twig.pick_up()
 			_collect_twig()
+			Fx.twig_get(twig.global_position + Vector2(0, -16))
+			var to := Vector2.INF
+			if twig_folder != null:
+				to = twig_folder.position + Vector2(Tuning.ICON_SIZE, Tuning.ICON_SIZE) / 2.0 + Vector2(0, 16)
+				twig.arrived.connect(_on_twig_arrived)
+			twig.pick_up(to)
 	Audio.stop_music()
 	Audio.play("sfx_win_level", 0.0, Tuning.WIN_VOLUME_DB)
 	queue_redraw()
@@ -807,7 +828,9 @@ func _ui_covers(m: Vector2) -> bool:
 	return false
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if _won:
+		_won_time += delta
 	queue_redraw()  # a barra de tarefas acompanha as janelas que abrem e fecham
 	var m := get_global_mouse_position()
 	# arrastos por polling: continuam mesmo se o mouse passar por outro nó
@@ -877,10 +900,21 @@ func _draw() -> void:
 	_draw_taskbar()
 	var text := win_text
 	if text == "":
-		text = "Achou a bicudinha!" if goal == "female" else "Pegou um graveto!"
+		if goal == "female":
+			text = "Achou a bicudinha!"
+		else:
+			text = "Pegou um graveto!"
 	if _won:
-		draw_string(ThemeDB.fallback_font, Vector2(win.rect.position.x, win.rect.get_center().y - 40.0),
-			text, HORIZONTAL_ALIGNMENT_CENTER, win.rect.size.x, 16, Color("2f3a8f"))
+		# entra com um pulinho: cresce passando do tamanho e volta (ease out back)
+		var t := clampf(_won_time / 0.35, 0.0, 1.0)
+		var k := 1.0 + 2.7 * pow(t - 1.0, 3.0) + 1.7 * pow(t - 1.0, 2.0)
+		var c := Vector2(win.rect.get_center().x, win.rect.get_center().y - 44.0)
+		draw_set_transform(c, 0.0, Vector2(k, k))
+		var font := ThemeDB.fallback_font
+		var w := win.rect.size.x
+		draw_string(font, Vector2(-w / 2.0 + 1, 7), text, HORIZONTAL_ALIGNMENT_CENTER, w, 18, Color(1, 1, 1, 0.8))
+		draw_string(font, Vector2(-w / 2.0, 6), text, HORIZONTAL_ALIGNMENT_CENTER, w, 18, Color("2f3a8f"))
+		draw_set_transform(Vector2.ZERO)
 
 
 # --- Barra de tarefas: as janelas abertas -------------------------------------------
@@ -1002,7 +1036,7 @@ func _add_desktop_folders() -> void:
 	var defs := [
 		["gravetos", _twig_files(), twig_folder_pos],
 		["fotos", PHOTOS_FILES, desktop_folder_pos.get("fotos", Vector2.ZERO)],
-		["trabalho", WORK_FILES, desktop_folder_pos.get("trabalho", Vector2.ZERO)],
+		["trabalho", _work_files(), desktop_folder_pos.get("trabalho", Vector2.ZERO)],
 		["créditos", CREDIT_FILES, desktop_folder_pos.get("créditos", Vector2.ZERO)],
 	]
 	for k in defs.size():
@@ -1023,6 +1057,8 @@ func _add_desktop_folders() -> void:
 		ic.contents = defs[k][1]
 		if label == "gravetos":
 			twig_folder = ic
+		elif label == "trabalho":
+			work_folder = ic
 
 
 ## Pegou o graveto desta fase: entra na coleção (e na pasta, já aberta ou não).
@@ -1073,3 +1109,45 @@ func _slot_taken(pos: Vector2) -> bool:
 		if ic.rect().grow(6.0).intersects(r):
 			return true
 	return false
+
+
+# --- Textos soltos (desbloqueiam a pasta "trabalho") -----------------------------------
+
+func _work_files() -> Array:
+	Progress.load_once()
+	var files: Array = []
+	for k: String in DOC_ORDER:
+		if Progress.docs.has(k):
+			files.append(DOCS[k])
+	return files
+
+
+## O .txt solto desta fase, num canto livre do desktop (só do desktop, nunca vira chão).
+func _add_loose_doc() -> void:
+	if loose_doc == "" or not DOCS.has(loose_doc):
+		return
+	var doc: Dictionary = DOCS[loose_doc]
+	var ic := _add_icon("file", _free_desktop_spot(3), true, doc.name)
+	ic.desktop_only = true
+	ic.solid = false
+	ic.file_data = doc
+	ic.doc_key = loose_doc
+
+
+## Leu um texto solto: ele entra na pasta "trabalho" (já aberta ou não).
+func _unlock_doc(key: String) -> void:
+	if not Progress.unlock_doc(key) or work_folder == null:
+		return
+	work_folder.contents = _work_files()
+	var fw: FolderWindow = _folder_windows.get(work_folder)
+	if fw != null:
+		fw.setup_files(work_folder.label, work_folder.contents)
+
+
+## O graveto chegou voando na pasta: ela dá um pulinho e solta faíscas.
+func _on_twig_arrived() -> void:
+	if twig_folder == null:
+		return
+	twig_folder.bounce()
+	Fx.sparkle(twig_folder.position + Vector2(Tuning.ICON_SIZE / 2.0, Tuning.ICON_SIZE / 2.0), 16, 0.7)
+	Audio.play("sfx_ui_hover", 0.0, -2.0)

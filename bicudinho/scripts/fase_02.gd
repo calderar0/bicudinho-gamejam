@@ -39,6 +39,7 @@ func _setup_level() -> void:
 	note_pos = Vector2(8, 216)
 	note_size = Vector2(136, 60)
 	level_name = "Fase 2: Arrasta"
+	loose_doc = "ninho"                     # texto solto no desktop (vai para a pasta "trabalho")
 	next_level = "res://scenes/level_03.tscn"
 
 
@@ -46,3 +47,5 @@ func _paint_map(g: Array) -> void:
 	paint(g, 0, 16, 39, 17, "#")    # chão
 	paint(g, 17, 16, 30, 17, "~")   # rio (14 tiles)
 	paint(g, 31, 8, 39, 15, "#")    # barranco do graveto (8 tiles)
+	paint(g, 15, 15, 16, 15, "^")   # lixo na beira do rio: pule antes
+	paint(g, 31, 7, 32, 7, "^")     # lixo na beirada do barranco: pouse mais para dentro

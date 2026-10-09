@@ -5,12 +5,14 @@ extends RefCounted
 ##   collected  fases em que o bicudinho pegou o graveto (fotos da pasta "gravetos")
 ##   beaten     fases vencidas (liberam o .exe da próxima no desktop)
 ##   music_on   se a música toca
+##   docs       textos sobre o bicudinho já lidos (desbloqueados na pasta "trabalho")
 
 const SAVE_PATH := "user://progresso.cfg"
 
 static var collected: Array = []
 static var beaten: Array = []
 static var music_on := true
+static var docs: Array = []
 static var _loaded := false
 
 
@@ -23,6 +25,7 @@ static func load_once() -> void:
 		collected = cfg.get_value("gravetos", "fases", [])
 		beaten = cfg.get_value("fases", "vencidas", [])
 		music_on = cfg.get_value("som", "musica", true)
+		docs = cfg.get_value("textos", "lidos", [])
 
 
 static func save() -> void:
@@ -30,6 +33,7 @@ static func save() -> void:
 	cfg.set_value("gravetos", "fases", collected)
 	cfg.set_value("fases", "vencidas", beaten)
 	cfg.set_value("som", "musica", music_on)
+	cfg.set_value("textos", "lidos", docs)
 	cfg.save(SAVE_PATH)
 
 
@@ -54,3 +58,13 @@ static func beat(level: int) -> void:
 static func unlocked(level: int) -> bool:
 	load_once()
 	return level <= 1 or beaten.has(level - 1) or beaten.has(level)
+
+
+## Desbloqueia um texto da pasta "trabalho". Devolve false se ele já estava lá.
+static func unlock_doc(key: String) -> bool:
+	load_once()
+	if docs.has(key):
+		return false
+	docs.append(key)
+	save()
+	return true

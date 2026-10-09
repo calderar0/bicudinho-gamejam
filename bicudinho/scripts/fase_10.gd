@@ -31,6 +31,7 @@ func _paint_map(g: Array) -> void:
 	paint(g, 7, 18, 12, 19, "#")    # chão de partida
 	paint(g, 13, 18, 22, 19, "~")   # rio
 	paint(g, 23, 18, 39, 19, "#")   # chão do outro lado
+	paint(g, 24, 17, 24, 17, "^")   # lixo logo depois da ponte, na frente do muro de ícones
 
 
 func _ready() -> void:

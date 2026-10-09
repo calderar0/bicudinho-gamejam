@@ -9,6 +9,7 @@ const DUST_COLOR := Color("e9dcc0")
 const DASH_COLOR := Color("dff4ff")
 const SHARD_COLORS: Array[Color] = [Color(0.78, 0.92, 1.0), Color(1, 1, 1), Color(0.55, 0.75, 0.95)]
 const FEATHER_COLORS: Array[Color] = [Color("b5833c"), Color("ead9a6"), Color("6b4a2a")]
+const SPARK_COLORS: Array[Color] = [Color("ffe066"), Color("fff6c8"), Color("9be36b"), Color("f2b84b")]
 
 
 class Part:
@@ -102,6 +103,23 @@ func death(pos: Vector2) -> void:
 		_spawn(center, Vector2.from_angle(ang) * _r(30.0, 120.0) + Vector2(0, -30), _r(0.6, 1.0),
 			2.0 if _rng.randf() < 0.5 else 1.0, FEATHER_COLORS[_rng.randi() % FEATHER_COLORS.size()], 260.0, 0.8)
 	shake(Tuning.FX_SHAKE_DEATH.x, Tuning.FX_SHAKE_DEATH.y)
+
+
+## Pegou o graveto: pausa curtinha, flash leve, tremidinho e uma chuva de faíscas.
+func twig_get(pos: Vector2) -> void:
+	sparkle(pos, 28, 1.0)
+	flash(0.25)
+	shake(2.0, 0.18)
+	hitstop(0.07)
+
+
+## Faíscas douradas e verdes saindo de pos (n faíscas, força de 0 a 1).
+func sparkle(pos: Vector2, n: int, strength: float) -> void:
+	for i in n:
+		var ang := _r(0.0, TAU)
+		var spd := _r(40.0, 140.0) * strength
+		_spawn(pos, Vector2.from_angle(ang) * spd + Vector2(0, -40.0 * strength), _r(0.5, 0.9),
+			2.0 if _rng.randf() < 0.4 else 1.0, SPARK_COLORS[_rng.randi() % SPARK_COLORS.size()], 120.0, 1.2)
 
 
 # --- Peças soltas ----------------------------------------------------------------

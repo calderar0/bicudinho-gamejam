@@ -19,6 +19,7 @@ extends LevelBase
 func _setup_level() -> void:
 	window_rect = Rect2(32, 48, 576, 272)
 	level_name = "Fase 11: Noite"
+	loose_doc = "diario"                     # texto solto no desktop (vai para a pasta "trabalho")
 	bird_start = Vector2(56, 288)
 	exit_feet = Vector2(568, 240)
 	wallpaper_color = Color("1d2b25")

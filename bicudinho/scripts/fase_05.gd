@@ -31,3 +31,5 @@ func _paint_map(g: Array) -> void:
 	paint(g, 0, 18, 12, 19, "#")    # chão de partida
 	paint(g, 13, 18, 26, 19, "~")   # rio (14 tiles)
 	paint(g, 27, 12, 39, 19, "#")   # barranco da bicudinha (6 tiles)
+	paint(g, 12, 17, 12, 17, "^")   # lixo na beira do rio
+	paint(g, 27, 11, 28, 11, "^")   # lixo na beirada do barranco

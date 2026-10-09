@@ -25,6 +25,7 @@ func _setup_level() -> void:
 	exit_feet = Vector2(560, 128)           # o graveto, na plataforma alta da direita
 	# sem dica.txt: o topo da mini-janela é plataforma e viraria ponte sobre os vãos
 	level_name = "Fase 4: Corta"
+	loose_doc = "nome"                     # texto solto no desktop (vai para a pasta "trabalho")
 	next_level = "res://scenes/level_05.tscn"
 
 

@@ -19,9 +19,12 @@ func _setup_level() -> void:
 	exit_spots = [Vector2(296, 288), Vector2(552, 288), Vector2(440, 128)]
 	bottom_launch = true
 	level_name = "Fase 8: Trampolim"
+	loose_doc = "como_ajudar"                     # texto solto no desktop (vai para a pasta "trabalho")
 	next_level = "res://scenes/level_09.tscn"
 
 
 func _paint_map(g: Array) -> void:
 	paint(g, 0, 18, 39, 19, "#")    # chão
 	paint(g, 24, 8, 30, 9, "#")     # beirada alta (10 tiles acima do chão)
+	paint(g, 11, 17, 12, 17, "^")   # lixo no caminho
+	paint(g, 31, 17, 32, 17, "^")   # lixo antes do lugar da direita

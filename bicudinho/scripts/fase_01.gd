@@ -19,6 +19,7 @@ extends LevelBase
 func _setup_level() -> void:
 	window_rect = Rect2(32, 48, 576, 272)  # janela fixa
 	level_name = "Fase 1: Brejo"
+	loose_doc = "bicudinho"                     # texto solto no desktop (vai para a pasta "trabalho")
 	bird_start = Vector2(72, 288)          # pés sobre o chão (linha 18 do mapa)
 	exit_feet = Vector2(576, 208)          # o graveto fica em cima do barranco (topo em y=208)
 	next_level = "res://scenes/level_02.tscn"

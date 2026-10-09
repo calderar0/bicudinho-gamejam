@@ -42,6 +42,9 @@ var behind := false
 var desktop_only := false
 ## .exe falso: o duplo clique abre esta cena (uma fase).
 var launch := ""
+## Texto solto sobre o bicudinho: abrir desbloqueia este texto na pasta "trabalho".
+var doc_key := ""
+var _bounce := 0.0   # pulinho (1 = começou agora)
 ## Ícone só do desktop: a fase pode escondê-lo (os .exe aparecem só com a janela minimizada).
 var shown := true
 var _cover := Rect2()       # a janela inteira (com moldura), enquanto está atrás dela
@@ -139,14 +142,28 @@ func update_inside(interior: Rect2) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if _bounce > 0.0:
+		_bounce = maxf(_bounce - delta * 2.5, 0.0)
+		queue_redraw()
 	if type == "brejo" and visible and show_art:
 		queue_redraw()  # o brilho pulsa
+
+
+## Pulinho de comemoração (a pasta "gravetos" quando chega um graveto novo).
+func bounce() -> void:
+	_bounce = 1.0
+	queue_redraw()
 
 
 func _draw() -> void:
 	if not show_art:
 		return
 	var s := Tuning.ICON_SIZE
+	if _bounce > 0.0:
+		var k := sin(_bounce * PI)   # sobe e desce
+		var sc := 1.0 + 0.25 * k
+		# cresce a partir do pé do ícone e sobe um pouco
+		draw_set_transform(Vector2(s / 2.0 * (1.0 - sc), s * (1.0 - sc) - 6.0 * k), 0.0, Vector2(sc, sc))
 	if behind:
 		_draw_peek(s)
 		return
@@ -165,6 +182,7 @@ func _draw() -> void:
 	if type == "brejo":
 		var pulse := 0.5 + 0.5 * sin(_time * 4.0)
 		draw_rect(Rect2(-1, -1, s + 2.0, s + 2.0), Color(1, 1, 0.6, 0.35 + 0.4 * pulse), false, 1.0)
+	draw_set_transform(Vector2.ZERO)
 	if label != "" and not inside and not dragging:
 		_draw_label()
 
