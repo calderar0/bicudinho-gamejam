@@ -359,6 +359,7 @@ func die(cause: String) -> void:
 	dead = true
 	velocity = Vector2.ZERO
 	_state_time = 0.0
+	Audio.play("sfx_death")
 	died.emit(cause)
 
 

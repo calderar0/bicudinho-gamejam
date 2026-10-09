@@ -18,6 +18,7 @@ Material de terceiros usado no jogo, com autor e licença.
 | `sfx/sfx_ui_hover.mp3` | 47313572-ui-pop-sound-316482.mp3 (Pixabay) | 47313572 | Pixabay Content License |
 | `sfx/sfx_window_limit.mp3` | soundshelfstudio-ui-error-pop-515668.mp3 (Pixabay) | soundshelfstudio | Pixabay Content License |
 | `sfx/sfx_win_level.mp3` | piglevelwin2, https://freesound.org/s/275104/ | Tuudurt | Creative Commons 0 |
+| `sfx/sfx_death.wav` | 871883__heyheytheree__death-pixel-sfx-free.wav, https://freesound.org/s/871883/ | heyheytheree | Creative Commons Attribution 4.0 |
 
 ## Música
 

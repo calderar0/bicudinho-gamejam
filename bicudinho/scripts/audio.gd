@@ -11,6 +11,7 @@ const SOUNDS := {
 	"sfx_ui_hover": "res://sfx/sfx_ui_hover.mp3",
 	"sfx_window_limit": "res://sfx/sfx_window_limit.mp3",
 	"sfx_win_level": "res://sfx/sfx_win_level.mp3",
+	"sfx_death": "res://sfx/sfx_death.wav",
 }
 const MUSIC := "res://music/music_game.ogg"
 const MUSIC_DB := -10.5   # ~30% do volume dos efeitos

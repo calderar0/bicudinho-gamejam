@@ -12,7 +12,6 @@ extends LevelBase
 ## Ícones: fora da janela são só ícones do desktop (com nome embaixo). Dentro da janela
 ## viram um bloco sólido de Tuning.ICON_SIZE (2x2 tiles). Arrastar solta na grade de 16 px.
 ## Duplo clique abre: as pastas mostram os arquivos de dentro, e as fotos abrem no visualizador.
-## TODO: troque os créditos pelas fotos reais (autor e licença) e anote tudo no CREDITS.md.
 
 
 func _setup_level() -> void:
@@ -22,16 +21,16 @@ func _setup_level() -> void:
 	icons_data = [
 		{"type": "folder", "x": 16, "y": 32, "label": "fotos_rio", "contents": [
 			{"kind": "image", "name": "rio_01.jpg", "photo": "rio_01",
-				"caption": "O rio Tietê, onde tudo começa.", "credit": "Foto: autor (licença)"},
+				"caption": "O rio Tietê, onde tudo começa."},
 			{"kind": "image", "name": "brejo_01.jpg", "photo": "brejo_01",
-				"caption": "O brejo limpo: o lar do bicudinho.", "credit": "Foto: autor (licença)"},
+				"caption": "O brejo limpo: o lar do bicudinho."},
 		]},
 		{"type": "trash", "x": 16, "y": 96, "label": "lixeira", "contents": [
 			{"kind": "image", "name": "lixo_01.jpg", "photo": "lixo_01",
-				"caption": "Lixo no rio: o que sobra da cidade.", "credit": "Foto: autor (licença)"},
+				"caption": "Lixo no rio: o que sobra da cidade."},
 		]},
 		{"type": "image", "x": 16, "y": 160, "label": "bicudinho.jpg", "photo": "bicudinho_01",
-			"caption": "O bicudinho-do-brejo-paulista.", "credit": "Foto: autor (licença)"},
+			"caption": "O bicudinho-do-brejo-paulista."},
 		# a dica é um arquivo de texto de verdade: fechou, é só dar duplo clique para abrir de novo
 		{"type": "notepad", "x": 72, "y": 32, "draggable": false, "label": "dica.txt"},
 	]

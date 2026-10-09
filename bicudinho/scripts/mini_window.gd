@@ -1,8 +1,9 @@
 class_name MiniWindow
 extends Node2D
 ## Mini-janela (bloco de notas): moldura, barra de título, botão de fechar,
-## arrastável pela barra. Fica acima de tudo, não segue a regra de ouro e
-## nunca colide com o bicudinho. O nó-pai repassa o mouse (handle_press etc.).
+## arrastável pela barra. Fica acima de tudo. O topo é uma plataforma de mão única
+## (pula por baixo, pousa em cima), só na parte que fica dentro da janela do jogo e
+## desligada enquanto é arrastada. O nó-pai repassa o mouse (handle_press etc.).
 
 signal closed
 
@@ -24,10 +25,23 @@ var _hover_close := false
 var _pressing_close := false
 var _dragging := false
 var _drag_offset := Vector2.ZERO
+var drag_start := Vector2.ZERO   # onde estava antes de arrastar (para voltar se o lugar for proibido)
+var _platform: CollisionShape2D
+var _platform_shape := RectangleShape2D.new()
 
 
 func _ready() -> void:
 	z_index = 100
+	var body := StaticBody2D.new()
+	body.collision_layer = 1   # mundo
+	body.collision_mask = 0
+	_platform = CollisionShape2D.new()
+	_platform.shape = _platform_shape
+	_platform.one_way_collision = true
+	_platform.one_way_collision_margin = _platform_h()  # a aderência: pega quem cai um pouco abaixo do topo
+	_platform.disabled = true
+	body.add_child(_platform)
+	add_child(body)
 	_frame_style = StyleBoxTexture.new()
 	_frame_style.texture = TEX_FRAME
 	_frame_style.set_texture_margin(SIDE_LEFT, FRAME_MARGIN)
@@ -44,6 +58,25 @@ func _ready() -> void:
 
 func outer_rect() -> Rect2:
 	return Rect2(position, size + Vector2(0, TITLE_H))
+
+
+## A faixa do topo que vira chão, cortada pela área interna da janela do jogo
+## (regra de ouro). Vazia se o topo não encosta nela.
+func platform_rect(interior: Rect2) -> Rect2:
+	return Rect2(position, Vector2(size.x, _platform_h())).intersection(interior)
+
+
+## Chamado a cada quadro de física: liga a plataforma só se a janela está aberta, parada
+## e com o topo dentro da janela do jogo.
+func update_platform(interior: Rect2) -> void:
+	var r := platform_rect(interior)
+	var on := visible and not _dragging and r.has_area()
+	if on:
+		if _platform_shape.size != r.size:
+			_platform_shape.size = r.size
+		_platform.position = r.get_center() - position
+	if _platform.disabled == on:
+		_platform.set_deferred("disabled", not on)
 
 
 func _close_rect() -> Rect2:
@@ -67,6 +100,7 @@ func handle_press(p: Vector2) -> bool:
 	elif _title_rect().has_point(p):
 		_dragging = true
 		_drag_offset = position - p
+		drag_start = position
 	queue_redraw()
 	return true
 
@@ -117,3 +151,8 @@ func _draw() -> void:
 	draw_style_box(_frame_style, Rect2(0, TITLE_H, size.x, size.y))
 	draw_multiline_string(ThemeDB.fallback_font, Vector2(PAD, TITLE_H + PAD + 8), text,
 		HORIZONTAL_ALIGNMENT_LEFT, size.x - PAD * 2.0, 8, -1, Color("2b2b3a"))
+
+
+## Espessura da plataforma: a linha do topo mais a aderência que desce dela.
+func _platform_h() -> float:
+	return maxf(5.0, Tuning.POPUP_PLATFORM_GRIP)

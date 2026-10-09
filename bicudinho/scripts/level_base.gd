@@ -453,6 +453,8 @@ func _open_text(file: Dictionary) -> void:
 # --- Objetivo, vitória e morte ----------------------------------------------------------
 
 func _physics_process(_delta: float) -> void:
+	for w in _windows:
+		w.update_platform(win.rect)  # o topo das mini-janelas é plataforma
 	if _won or _restarting or bird.dead:
 		return
 	# o objetivo só existe (visível) quando está inteiro dentro da janela
@@ -500,7 +502,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not event.pressed:
 			win.release_button(m)
 			for w in _windows:
+				var was_dragging := w.is_dragging()
 				w.handle_release(m)
+				# o topo virou chão em cima do bicudinho: lugar proibido, a janela volta
+				if was_dragging and w.platform_rect(win.rect).intersects(bird.box_rect()):
+					w.position = w.drag_start
+					Audio.play("sfx_window_limit")
 			return
 		# ordem de prioridade: janelas de interface (a de cima primeiro), botões da janela do
 		# jogo, ícones, bordas da janela do jogo

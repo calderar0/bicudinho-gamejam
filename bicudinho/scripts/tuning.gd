@@ -97,3 +97,9 @@ const ICON_ART_ALIGN_TOP := true
 ## A janela não engole ícone: se uma borda passa por cima de um ícone arrastável (ficando
 ## metade dentro, metade fora), ele é empurrado para fora, para o lado mais próximo livre.
 const ICON_PUSH_OUT := true
+
+# --- Mini-janelas (dica, pastas, fotos) ----------------------------------------
+## Aderência do topo das mini-janelas, em px: a plataforma desce isto abaixo da linha
+## do topo. Se ele cai com os pés até essa altura abaixo do topo, é puxado para cima
+## e pousa (pulo que quase alcança ainda pega). 0 desliga.
+const POPUP_PLATFORM_GRIP := 8.0
