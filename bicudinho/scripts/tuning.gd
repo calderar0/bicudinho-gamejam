@@ -9,7 +9,7 @@ const TASKBAR_H := 20.0
 
 # --- Debug --------------------------------------------------------------------
 ## Imprime no console a altura e a distância de cada pulo. Desligue antes do export.
-const DEBUG_MEASURE := true
+const DEBUG_MEASURE := false
 
 # --- Bicudinho: andar e pular -------------------------------------------------
 const RUN_SPEED := 150.0

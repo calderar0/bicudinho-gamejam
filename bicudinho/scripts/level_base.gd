@@ -21,7 +21,7 @@ const BICUDINHO_SCENE := preload("res://scenes/bicudinho.tscn")
 const TASKBAR_TEX := preload("res://art/ui/taskbar.png")
 const WALLPAPER_TEX := preload("res://art/ui/wallpaper.png")   # 640x360, a tela toda
 const WIN_RESTART_TIME := 2.2   # segundos entre chegar no objetivo e ir para a próxima fase
-                                # (dá tempo de ver o graveto voar até a pasta)
+								# (dá tempo de ver o graveto voar até a pasta)
 ## Barra de tarefas: um botão por janela aberta (o jogo e as mini-janelas), com ícone.
 const TASK_X := 26.0
 const TASK_W := 104.0
